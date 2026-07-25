@@ -1,0 +1,13 @@
+# Python / Virtualenv
+.venv/
+venv/
+env/
+ENV/
+
+# PyCharm / IntelliJ
+.idea/
+
+# Optional: lokale Dateien
+*.log
+*.pyc
+__pycache__/
