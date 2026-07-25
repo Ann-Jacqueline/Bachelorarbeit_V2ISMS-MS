@@ -35,9 +35,10 @@ class MetricProfile:
 
     @classmethod
     def from_db_row(cls, row):
+        row = dict(row)
         return cls(
-            metric_id=row["metric_id"],
-            metric_typ=row["metric_typ"],
+            metric_id=row.get("metric_id"),
+            metric_typ=row.get("metric_typ"),
             name=row.get("name"),
             beschreibung=row.get("beschreibung"),
             domain=row.get("domain"),
