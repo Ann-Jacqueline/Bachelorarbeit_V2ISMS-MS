@@ -1,0 +1,106 @@
+.tree-node {
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px solid #2d3a52;
+}
+
+.node-card {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #2d3a52;
+  border-radius: 12px;
+  background: #101828;
+  color: #e5e7eb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.node-header {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+}
+
+.node-header.clickable {
+  cursor: pointer;
+}
+
+.toggle-icon {
+  width: 1rem;
+  margin-top: 0.15rem;
+  color: #60a5fa;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.toggle-icon.placeholder {
+  color: #64748b;
+}
+
+.node-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.node-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.node-meta {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.node-data {
+  margin-top: 0.9rem;
+}
+
+.node-data pre {
+  margin: 0;
+  padding: 0.85rem;
+  border-radius: 10px;
+  background: #0b1220;
+  color: #cbd5e1;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.node-children {
+  margin-top: 0.35rem;
+}
+
+.node-card.control {
+  border-color: #3b82f6;
+}
+
+.node-card.metric_group {
+  border-color: #14b8a6;
+}
+
+.node-card.metric {
+  border-color: #8b5cf6;
+}
+
+.node-card.score {
+  border-color: #22c55e;
+}
+
+.node-card.metric_details {
+  border-color: #f59e0b;
+}
+
+.node-card.evidenzen,
+.node-card.evidenz {
+  border-color: #a855f7;
+}

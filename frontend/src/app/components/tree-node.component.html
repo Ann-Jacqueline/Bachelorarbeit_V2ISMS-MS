@@ -1,0 +1,32 @@
+<div class="tree-node">
+  <div class="node-card" [ngClass]="node.node_type">
+    <button
+      class="node-header"
+      type="button"
+      (click)="toggle()"
+      [class.clickable]="hasChildren()"
+    >
+      <span class="toggle-icon" *ngIf="hasChildren()">
+        {{ isExpanded() ? '▾' : '▸' }}
+      </span>
+
+      <span class="toggle-icon placeholder" *ngIf="!hasChildren()">•</span>
+
+      <div class="node-title-group">
+        <div class="node-title">{{ node.name }}</div>
+        <div class="node-meta">{{ node.node_type }}</div>
+      </div>
+    </button>
+
+    <div class="node-data" *ngIf="node.data">
+      <pre>{{ node.data | json }}</pre>
+    </div>
+  </div>
+
+  <div class="node-children" *ngIf="hasChildren() && isExpanded()">
+    <app-tree-node
+      *ngFor="let child of node.children"
+      [node]="child"
+    ></app-tree-node>
+  </div>
+</div>

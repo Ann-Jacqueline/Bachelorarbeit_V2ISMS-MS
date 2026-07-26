@@ -4,10 +4,42 @@ venv/
 env/
 ENV/
 
-# PyCharm / IntelliJ
-.idea/
-
-# Optional: lokale Dateien
+# Logs / Cache
 *.log
 *.pyc
 __pycache__/
+
+# Build output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+/.angular/cache
+/coverage
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# IDEs
+.idea/
+.vscode/
+frontend/.vscode/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Misc
+.sass-cache/
+/connect.lock
+/libpeerconnection.log
+testem.log
+/typings
+__screenshots__/
+
+# System files
+.DS_Store
+Thumbs.db

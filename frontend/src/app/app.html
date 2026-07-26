@@ -1,0 +1,16 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Metric View</h1>
+    <p>Erste rekursive Baumansicht für ein Control.</p>
+  </header>
+
+  <p *ngIf="loading">Lade Metric Tree...</p>
+
+  <p *ngIf="errorMessage" class="error">
+    {{ errorMessage }}
+  </p>
+
+  <section *ngIf="tree" class="tree-wrapper">
+    <app-tree-node [node]="tree"></app-tree-node>
+  </section>
+</div>

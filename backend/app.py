@@ -1,11 +1,20 @@
 from flask import Flask, jsonify
 import sqlite3
+from flask_cors import CORS
 from module_metric_view.MetricQueryService import MetricViewQueryService
 
 app = Flask(__name__)
+CORS(app)
 
-DATABASE_PATH = r"C:\Users\ann-jacqueline.kaldj\PyCharmProjects\Bachelorarbeit_Massnahmenbewertungshub\V2ISMS-MS.sqlite.sqlite"
+DATABASE_PATH = r"C:\Users\Ann-Ja\PycharmProjects\Bachelorarbeit_V2ISMS-MS\V2ISMS-MS.sqlite.sqlite"
 
+@app.get("/")
+def home():
+    return {
+        "status": "success",
+        "message": "Backend läuft.",
+        "available_endpoint": "/api/metric-view/control/<control_id>"
+    }, 200
 
 @app.get("/api/metric-view/control/<control_id>")
 def get_metric_view_for_control(control_id):
