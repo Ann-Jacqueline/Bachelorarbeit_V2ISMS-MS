@@ -12,9 +12,12 @@ class ControlRaw:
             beschreibung=row["beschreibung"]
         )
 
+
     def to_dict(self):
         return {
             "control_id": self.control_id,
             "name": self.name,
             "beschreibung": self.beschreibung
         }
+
+

@@ -1,3 +1,4 @@
+from module_control_catalog import control_raw
 from module_control_catalog.ControlService import ControlService
 from module_metrics.MetricService import MetricService
 from module_evidence.EvidenceService import EvidenceService
@@ -47,6 +48,8 @@ class DecisionService:
         if ranked_results is None:
             return None
 
+        control_raw = self.control_service.get_control_raw_by_id(control_id)
+
         enriched_verification_results = []
         for result in ranked_results["verification_results"]:
             enriched_verification_results.append(
@@ -61,6 +64,7 @@ class DecisionService:
 
         return {
             "control_id": ranked_results["control_id"],
+            "control_raw": control_raw.to_dict() if control_raw is not None else None,
             "verification_results": enriched_verification_results,
             "validation_results": enriched_validation_results
         }
