@@ -1,32 +1,26 @@
 <div class="tree-node">
-  <div class="node-card" [ngClass]="node.node_type">
-    <button
-      class="node-header"
-      type="button"
-      (click)="toggle()"
-      [class.clickable]="hasChildren()"
-    >
-      <span class="toggle-icon" *ngIf="hasChildren()">
-        {{ isExpanded() ? '▾' : '▸' }}
-      </span>
-
-      <span class="toggle-icon placeholder" *ngIf="!hasChildren()">•</span>
+  <div class="node-card" [ngClass]="node.type">
+    <div class="node-header">
+      <div class="toggle-icon">
+        <span *ngIf="node.children && node.children.length > 0">•</span>
+        <span *ngIf="!node.children || node.children.length === 0" class="placeholder">•</span>
+      </div>
 
       <div class="node-title-group">
-        <div class="node-title">{{ node.name }}</div>
-        <div class="node-meta">{{ node.node_type }}</div>
+        <div class="node-title">{{ node.label }}</div>
+        <div class="node-meta">{{ node.type }}</div>
       </div>
-    </button>
+    </div>
 
-    <div class="node-data" *ngIf="node.data">
+    <div *ngIf="node.data" class="node-data">
       <pre>{{ node.data | json }}</pre>
     </div>
   </div>
 
-  <div class="node-children" *ngIf="hasChildren() && isExpanded()">
+  <div *ngIf="node.children && node.children.length > 0" class="node-children">
     <app-tree-node
       *ngFor="let child of node.children"
-      [node]="child"
-    ></app-tree-node>
+      [node]="child">
+    </app-tree-node>
   </div>
 </div>

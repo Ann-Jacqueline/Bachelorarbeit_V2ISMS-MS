@@ -41,3 +41,34 @@ class MetricViewQueryService:
                 "message": "Interner Fehler beim Laden der Metric View.",
                 "data": None
             }
+
+    def get_all_controls_response(self):
+        try:
+            cursor = self.db_connection.cursor()
+            cursor.execute("""
+                           SELECT control_id, name
+                           FROM control_raw
+                           ORDER BY control_id
+                           """)
+            rows = cursor.fetchall()
+
+            controls = [
+                {
+                    "control_id": row["control_id"],
+                    "name": row["name"]
+                }
+                for row in rows
+            ]
+
+            return {
+                "status": "success",
+                "message": None,
+                "data": controls
+            }
+
+        except Exception:
+            return {
+                "status": "error",
+                "message": "Interner Fehler beim Laden der Controls.",
+                "data": []
+            }

@@ -1,6 +1,6 @@
-import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MetricTreeNode } from '../models/metric-view.model';
+import { Component, Input } from '@angular/core';
+import { MetricTreeNode } from '../models/metric.models';
 
 @Component({
   selector: 'app-tree-node',
@@ -10,19 +10,5 @@ import { MetricTreeNode } from '../models/metric-view.model';
   styleUrl: './tree-node.component.scss'
 })
 export class TreeNodeComponent {
-  @Input({ required: true }) node!: MetricTreeNode;
-
-  isExpanded(): boolean {
-    return this.node.expanded;
-  }
-
-  toggle(): void {
-    if (this.node.children.length > 0) {
-      this.node.expanded = !this.node.expanded;
-    }
-  }
-
-  hasChildren(): boolean {
-    return this.node.children && this.node.children.length > 0;
-  }
+  @Input() node!: MetricTreeNode;
 }

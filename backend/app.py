@@ -41,3 +41,27 @@ def get_metric_view_for_control(control_id):
 
     finally:
         conn.close()
+        
+@app.get("/api/controls")
+def get_controls():
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        metric_query_service = MetricViewQueryService(conn)
+        response = metric_query_service.get_all_controls_response()
+
+        if response["status"] == "success":
+            return jsonify(response), 200
+
+        return jsonify(response), 500
+
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Interner Fehler beim Laden der Controls.",
+            "data": []
+        }), 500
+
+    finally:
+        conn.close()

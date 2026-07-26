@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MetricViewService } from './services/metric-view.service';
-import { MetricTreeNode, MetricTreeResponse } from './models/metric-view.model';
+import { ControlListItem, MetricTreeNode } from './models/metric.models';
 import { TreeNodeComponent } from './components/tree-node.component';
 
 @Component({
@@ -11,40 +11,65 @@ import { TreeNodeComponent } from './components/tree-node.component';
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App implements OnInit {
+export class AppComponent implements OnInit {
   private metricViewService = inject(MetricViewService);
 
-  response: MetricTreeResponse | null = null;
-  tree: MetricTreeNode | null = null;
-  loading = false;
+  controls: ControlListItem[] = [];
+  selectedControlId: string | null = null;
+  metricTree: MetricTreeNode | null = null;
+
+  isLoading = false;
   errorMessage: string | null = null;
 
   ngOnInit(): void {
-    this.loadMetricTree('8.3');
+    this.loadControls();
   }
 
-  loadMetricTree(controlId: string): void {
-    this.loading = true;
+  loadControls(): void {
+    this.isLoading = true;
     this.errorMessage = null;
 
-    this.metricViewService.getMetricTreeForControl(controlId).subscribe({
+    this.metricViewService.getControls().subscribe({
       next: (response) => {
-        this.response = response;
+        this.controls = response.data;
 
-        if (response.status === 'success') {
-          this.tree = response.data;
+        if (this.controls.length > 0) {
+          this.selectedControlId = this.controls[0].control_id;
+          this.loadMetricView(this.selectedControlId);
         } else {
-          this.tree = null;
-          this.errorMessage = response.message;
+          this.isLoading = false;
         }
-
-        this.loading = false;
       },
       error: () => {
-        this.tree = null;
-        this.loading = false;
-        this.errorMessage = 'Backend nicht erreichbar oder CORS blockiert den Request.';
+        this.errorMessage = 'Fehler beim Laden der Controls.';
+        this.isLoading = false;
       }
     });
+  }
+
+  loadMetricView(controlId: string): void {
+    this.isLoading = true;
+    this.errorMessage = null;
+
+    this.metricViewService.getMetricViewForControl(controlId).subscribe({
+      next: (response) => {
+        this.metricTree = response.data;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.errorMessage = 'Fehler beim Laden der Metric View.';
+        this.metricTree = null;
+        this.isLoading = false;
+      }
+    });
+  }
+
+  selectControl(controlId: string): void {
+    if (this.selectedControlId === controlId) {
+      return;
+    }
+
+    this.selectedControlId = controlId;
+    this.loadMetricView(controlId);
   }
 }

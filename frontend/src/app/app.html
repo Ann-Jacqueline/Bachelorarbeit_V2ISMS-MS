@@ -1,16 +1,64 @@
-<div class="page">
-  <header class="page-header">
-    <h1>Metric View</h1>
-    <p>Erste rekursive Baumansicht für ein Control.</p>
+<div style="color: red; font-size: 32px; padding: 20px; background: yellow;">
+  APP LÄUFT
+</div>
+
+<div class="metric-view-page">
+  <header class="metric-view-header">
+    <div>
+      <p class="layer-label">SCHICHT 3</p>
+      <h1>Metric View</h1>
+      <p class="subtitle">Transparenzsicht konzeptionell</p>
+    </div>
   </header>
 
-  <p *ngIf="loading">Lade Metric Tree...</p>
+  <main class="metric-view-layout">
+    <aside class="controls-panel">
+      <h2>Controls</h2>
 
-  <p *ngIf="errorMessage" class="error">
-    {{ errorMessage }}
-  </p>
+      <div *ngIf="isLoading && controls.length === 0">
+        Controls werden geladen...
+      </div>
 
-  <section *ngIf="tree" class="tree-wrapper">
-    <app-tree-node [node]="tree"></app-tree-node>
-  </section>
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+
+      <ul *ngIf="controls.length > 0" class="controls-list">
+        <li *ngFor="let control of controls">
+          <button
+            type="button"
+            class="control-button"
+            [class.active]="control.control_id === selectedControlId"
+            (click)="selectControl(control.control_id)"
+          >
+            <span class="control-id">{{ control.control_id }}</span>
+            <span class="control-name">{{ control.name }}</span>
+          </button>
+        </li>
+      </ul>
+    </aside>
+
+    <section class="metric-canvas">
+      <div *ngIf="isLoading && selectedControlId" class="loading-state">
+        Metric View wird geladen...
+      </div>
+
+      <div *ngIf="!isLoading && metricTree" class="metric-tree-wrapper">
+        <app-tree-node [node]="metricTree"></app-tree-node>
+      </div>
+
+      <div *ngIf="!isLoading && !metricTree && !errorMessage" class="empty-state">
+        Keine Metric-Daten vorhanden.
+      </div>
+    </section>
+  </main>
+
+  <footer class="metric-legend">
+    <h3>Legende</h3>
+    <div class="legend-items">
+      <span>Struktur</span>
+      <span>Metriken</span>
+      <span>Evidenz</span>
+    </div>
+  </footer>
 </div>
