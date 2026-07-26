@@ -1,4 +1,6 @@
 from module_control_catalog.control_profil import ControlProfile
+from module_control_catalog.control_raw import ControlRaw
+
 
 class ControlService:
     def __init__(self, db_connection):
@@ -29,7 +31,42 @@ class ControlService:
 
     def get_control_profile_by_id(self, control_id):
         normalized_id = control_id.removeprefix("A.")
+
         for profile in self.get_all_control_profiles():
             if profile.control_id == normalized_id:
                 return profile
+
         return None
+
+    def get_all_controls_raw(self):
+        query = """
+            SELECT
+                control_id,
+                name,
+                beschreibung
+            FROM control_raw
+        """
+        cursor = self.db_connection.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return [ControlRaw.from_db_row(row) for row in rows]
+
+    def get_control_raw_by_id(self, control_id):
+        normalized_id = control_id.removeprefix("A.")
+
+        query = """
+            SELECT
+                control_id,
+                name,
+                beschreibung
+            FROM control_raw
+            WHERE control_id = ?
+        """
+        cursor = self.db_connection.cursor()
+        cursor.execute(query, (normalized_id,))
+        row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return ControlRaw.from_db_row(row)
