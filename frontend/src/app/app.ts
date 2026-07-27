@@ -49,6 +49,8 @@ export class AppComponent implements OnInit {
   isEvidenceInfoExpanded = true;
   isEvidenceListExpanded = true;
 
+  expandedMetricIds = new Set<string>();
+
   readonly evidenceIntroText =
     'Evidenzen beschreiben, auf welcher Beobachtungs- oder Nachweisbasis eine Maßnahme bewertet wird. ' +
     'Evidenzarten strukturieren dabei die Herkunft des Nachweises, zum Beispiel Logs, Konfigurationen, Beobachtungen, Interviews oder Policy-Dokumente. ' +
@@ -81,6 +83,12 @@ export class AppComponent implements OnInit {
       text: 'Richtlinien, Vorgaben, Arbeitsanweisungen und formale Nachweisdokumente.'
     }
   ];
+
+  readonly verificationInfoText =
+    'Verifikationsmetriken messen, ob eine Maßnahme technisch korrekt und gemäß ihrer vorgesehenen Spezifikation umgesetzt wurde. Sie liefern in der Regel objektivierbare, direkt messbare Ergebnisse und beantworten die Frage, ob die Maßnahme vorhanden und korrekt konfiguriert ist.';
+
+  readonly validationInfoText =
+    'Validierungsmetriken messen, ob eine Maßnahme ihren beabsichtigten Schutzzweck unter realen Bedingungen erfüllt. Sie sind häufig wirkungsorientiert, kontextabhängig und beantworten die Frage, ob die Maßnahme tatsächlich zur Risikoreduktion oder Schutzwirkung beiträgt.';
 
   ngOnInit(): void {
     this.loadControls();
@@ -116,6 +124,7 @@ export class AppComponent implements OnInit {
     this.selectedMetric = null;
     this.isEvidenceInfoExpanded = true;
     this.isEvidenceListExpanded = true;
+    this.expandedMetricIds.clear();
 
     this.metricViewService.getMetricViewForControl(controlId).subscribe({
       next: (response) => {
@@ -128,6 +137,7 @@ export class AppComponent implements OnInit {
         this.metricTree = null;
         this.canvasGroups = [];
         this.selectedMetric = null;
+        this.expandedMetricIds.clear();
         this.isLoading = false;
       }
     });
@@ -153,6 +163,24 @@ export class AppComponent implements OnInit {
 
   toggleEvidenceList(): void {
     this.isEvidenceListExpanded = !this.isEvidenceListExpanded;
+  }
+
+  toggleMetricDetails(metricId: string): void {
+    if (this.expandedMetricIds.has(metricId)) {
+      this.expandedMetricIds.delete(metricId);
+    } else {
+      this.expandedMetricIds.add(metricId);
+    }
+  }
+
+  isMetricExpanded(metricId: string): boolean {
+    return this.expandedMetricIds.has(metricId);
+  }
+
+  getGroupInfoText(group: CanvasGroup): string {
+    return group.type === 'verification'
+      ? this.verificationInfoText
+      : this.validationInfoText;
   }
 
   private buildCanvasViewModel(): void {
