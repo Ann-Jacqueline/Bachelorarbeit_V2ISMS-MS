@@ -9,30 +9,39 @@
 
   <main class="metric-view-layout">
     <aside class="controls-panel">
-      <h2>Controls</h2>
+  <h2>Controls</h2>
 
-      <div *ngIf="isLoading && controls.length === 0">
-        Controls werden geladen...
-      </div>
+  <div *ngIf="isLoading && controls.length === 0">
+    Controls werden geladen...
+  </div>
 
-      <div *ngIf="errorMessage" class="error-message">
-        {{ errorMessage }}
-      </div>
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
 
-      <ul *ngIf="controls.length > 0" class="controls-list">
-        <li *ngFor="let control of controls">
-          <button
-            type="button"
-            class="control-button"
-            [class.active]="control.control_id === selectedControlId"
-            (click)="selectControl(control.control_id)"
-          >
-            <span class="control-id">{{ control.control_id }}</span>
-            <span class="control-name">{{ control.name }}</span>
-          </button>
-        </li>
-      </ul>
-    </aside>
+  <ul *ngIf="controls.length > 0" class="controls-list">
+    <li *ngFor="let control of controls">
+      <button
+        type="button"
+        class="control-button"
+        [class.active]="control.control_id === selectedControlId"
+        (click)="selectControl(control.control_id)"
+      >
+        <span class="control-id">{{ control.control_id }}</span>
+        <span class="control-name">{{ control.name }}</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="side-legend">
+    <h3>Legende</h3>
+    <div class="legend-items">
+      <span class="legend-chip structure">Struktur</span>
+      <span class="legend-chip metric">Metriken</span>
+      <span class="legend-chip evidence">Evidenz</span>
+    </div>
+  </div>
+</aside>
 
     <section class="metric-canvas">
       <div *ngIf="isLoading && selectedControlId" class="loading-state">
@@ -40,228 +49,173 @@
       </div>
 
       <div *ngIf="!isLoading && metricTree" class="canvas-scene">
-  <div class="left-column">
-    <aside class="control-profile-panel">
-      <div class="profile-header">
-        <p class="profile-kicker">Control-Profil</p>
-        <h3>{{ metricTree.name }}</h3>
-      </div>
+        <svg class="scene-connections" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true">
+          <path class="connection-line profile-line" d="M 470 230 C 560 280, 610 340, 665 430" />
+          <path class="connection-line evidence-line" d="M 470 605 C 560 560, 610 520, 665 470" />
 
-      <div class="profile-row">
-        <span class="profile-label">Control ID</span>
-        <span class="profile-value">{{ metricTree.data['control_id'] }}</span>
-      </div>
+          <path class="connection-line metric-line" d="M 850 420 C 965 290, 1080 255, 1180 250" />
+          <path class="connection-line metric-line" d="M 850 450 C 980 445, 1085 430, 1180 420" />
+          <path class="connection-line metric-line" d="M 850 480 C 970 575, 1080 625, 1180 645" />
 
-      <div class="profile-section">
-        <h4>Beschreibung</h4>
-        <p>{{ controlDescription }}</p>
-      </div>
-    </aside>
+          <path class="connection-line detail-line" d="M 1265 250 C 1340 250, 1400 250, 1460 250" />
 
-    <aside class="evidence-panel" *ngIf="selectedEvidenceItems.length > 0">
-      <div class="evidence-panel-header">
-        <p class="evidence-panel-kicker">Evidenzen</p>
-        <h3>{{ selectedMetric?.name }}</h3>
-      </div>
+          <circle class="connection-dot structure-dot" cx="470" cy="230" r="6" />
+          <circle class="connection-dot evidence-dot" cx="470" cy="605" r="6" />
+          <circle class="connection-dot structure-dot" cx="850" cy="450" r="6" />
 
-      <ul class="evidence-card-list">
-        <li *ngFor="let evidence of selectedEvidenceItems" class="evidence-card">
-          <div class="evidence-card-topline">
-            <span class="evidence-asset">
-              {{ evidence.data['beispiel_asset'] || 'Kein Beispiel-Asset' }}
-            </span>
-            <span class="evidence-type-chip">
-              {{ formatEvidenceType(evidence.data['evidenzart_code']) }}
-            </span>
-          </div>
+          <circle class="connection-dot metric-dot" cx="1180" cy="250" r="6" />
+          <circle class="connection-dot metric-dot" cx="1180" cy="420" r="6" />
+          <circle class="connection-dot metric-dot" cx="1180" cy="645" r="6" />
+          <circle class="connection-dot detail-dot" cx="1460" cy="250" r="6" />
+      </svg>
+        <div class="left-column">
+          <aside class="control-profile-panel">
+            <div class="profile-header">
+              <p class="profile-kicker">Control-Profil</p>
+              <h3>{{ metricTree.name }}</h3>
+            </div>
+
+            <div class="profile-row">
+              <span class="profile-label">Control ID</span>
+              <span class="profile-value">{{ metricTree.data['control_id'] }}</span>
+            </div>
+
+            <div class="profile-section">
+              <h4>Beschreibung</h4>
+              <p>{{ controlDescription }}</p>
+            </div>
+          </aside>
+
+          <aside class="evidence-panel" *ngIf="selectedEvidenceItems.length > 0">
+  <div class="evidence-panel-header">
+    <p class="evidence-panel-kicker">Evidenzen</p>
+    <h3>{{ selectedMetric?.name }}</h3>
+  </div>
+
+  <div class="evidence-explainer">
+    <button
+      type="button"
+      class="accordion-toggle"
+      (click)="toggleEvidenceInfo()"
+      [attr.aria-expanded]="isEvidenceInfoExpanded"
+    >
+      <span>Was bedeuten Evidenzarten und Beispiel-Assets?</span>
+      <span class="accordion-icon">{{ isEvidenceInfoExpanded ? '−' : '+' }}</span>
+    </button>
+
+    <div class="accordion-body" *ngIf="isEvidenceInfoExpanded">
+      <p class="evidence-intro-text">
+        {{ evidenceIntroText }}
+      </p>
+
+      <ul class="evidence-type-info-list">
+        <li *ngFor="let item of evidenceTypeExplanations" class="evidence-type-info-item">
+          <span class="evidence-type-info-label">{{ item.label }}</span>
+          <p>{{ item.text }}</p>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="evidence-items-section">
+    <button
+      type="button"
+      class="accordion-toggle"
+      (click)="toggleEvidenceList()"
+      [attr.aria-expanded]="isEvidenceListExpanded"
+    >
+      <span>Einzelne Evidenzen anzeigen</span>
+      <span class="accordion-icon">{{ isEvidenceListExpanded ? '−' : '+' }}</span>
+    </button>
+
+    <ul class="evidence-card-list" *ngIf="isEvidenceListExpanded">
+      <li *ngFor="let evidence of selectedEvidenceItems" class="evidence-card">
+        <div class="evidence-card-topline">
+          <span class="evidence-asset">
+            {{ evidence.data['beispiel_asset'] || 'Kein Beispiel-Asset' }}
+          </span>
+          <span class="evidence-type-chip">
+            {{ formatEvidenceType(evidence.data['evidenzart_code']) }}
+          </span>
+        </div>
 
           <p class="evidence-description">
             {{ evidence.data['beschreibung'] || 'Keine Beschreibung vorhanden.' }}
           </p>
         </li>
       </ul>
-    </aside>
-  </div>
-
-  <div class="canvas-center-node">
-    <div class="center-node-icon">⛨</div>
-    <div class="center-node-content">
-      <span class="center-node-id">{{ metricTree.data['control_id'] }}</span>
-      <h2>{{ metricTree.name }}</h2>
-    </div>
-  </div>
-
-  <div class="canvas-group verification-group" *ngIf="canvasGroups[0]">
-    <div class="group-node">
-      <div class="group-node-title">{{ canvasGroups[0].title }}</div>
-      <div class="group-node-count">{{ canvasGroups[0].count }}</div>
-    </div>
-
-    <div class="metric-list">
-      <button
-        *ngFor="let metric of canvasGroups[0].metrics"
-        type="button"
-        class="metric-pill"
-        [class.active]="selectedMetric?.id === metric.id"
-        (click)="selectMetric(metric)"
-      >
-        <span class="metric-pill-name">{{ metric.name }}</span>
-        <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
-      </button>
-    </div>
-  </div>
-
-  <div class="canvas-group validation-group" *ngIf="canvasGroups[1]">
-    <div class="group-node">
-      <div class="group-node-title">{{ canvasGroups[1].title }}</div>
-      <div class="group-node-count">{{ canvasGroups[1].count }}</div>
-    </div>
-
-    <div class="metric-list">
-      <button
-        *ngFor="let metric of canvasGroups[1].metrics"
-        type="button"
-        class="metric-pill"
-        [class.active]="selectedMetric?.id === metric.id"
-        (click)="selectMetric(metric)"
-      >
-        <span class="metric-pill-name">{{ metric.name }}</span>
-        <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
-      </button>
-    </div>
-  </div>
-
-  <aside class="metric-detail-panel" *ngIf="selectedMetric">
-    <div class="detail-header">
-      <p class="detail-kicker">Metrikdetails</p>
-      <h3>{{ selectedMetric.name }}</h3>
-      <div class="detail-score-chip">
-        Score: {{ formatScore(selectedMetric.score) }}
-      </div>
-    </div>
-
-    <div class="detail-section">
-      <h4>Beschreibung</h4>
-      <p>{{ selectedMetricDescription }}</p>
-    </div>
-
-    <div class="detail-section">
-      <h4>Formel</h4>
-      <p>{{ selectedMetricFormula }}</p>
     </div>
   </aside>
-</div><div *ngIf="!isLoading && metricTree" class="canvas-scene">
-  <div class="left-column">
-    <aside class="control-profile-panel">
-      <div class="profile-header">
-        <p class="profile-kicker">Control-Profil</p>
-        <h3>{{ metricTree.name }}</h3>
-      </div>
+        </div>
 
-      <div class="profile-row">
-        <span class="profile-label">Control ID</span>
-        <span class="profile-value">{{ metricTree.data['control_id'] }}</span>
-      </div>
+        <div class="canvas-center-node">
+          <div class="center-node-icon">⛨</div>
+          <div class="center-node-content">
+            <span class="center-node-id">{{ metricTree.data['control_id'] }}</span>
+            <h2>{{ metricTree.name }}</h2>
+          </div>
+        </div>
 
-      <div class="profile-section">
-        <h4>Beschreibung</h4>
-        <p>{{ controlDescription }}</p>
-      </div>
-    </aside>
-
-    <aside class="evidence-panel" *ngIf="selectedEvidenceItems.length > 0">
-      <div class="evidence-panel-header">
-        <p class="evidence-panel-kicker">Evidenzen</p>
-        <h3>{{ selectedMetric?.name }}</h3>
-      </div>
-
-      <ul class="evidence-card-list">
-        <li *ngFor="let evidence of selectedEvidenceItems" class="evidence-card">
-          <div class="evidence-card-topline">
-            <span class="evidence-asset">
-              {{ evidence.data['beispiel_asset'] || 'Kein Beispiel-Asset' }}
-            </span>
-            <span class="evidence-type-chip">
-              {{ formatEvidenceType(evidence.data['evidenzart_code']) }}
-            </span>
+        <div class="canvas-group verification-group" *ngIf="canvasGroups[0]">
+          <div class="group-node">
+            <div class="group-node-title">{{ canvasGroups[0].title }}</div>
+            <div class="group-node-count">{{ canvasGroups[0].count }}</div>
           </div>
 
-          <p class="evidence-description">
-            {{ evidence.data['beschreibung'] || 'Keine Beschreibung vorhanden.' }}
-          </p>
-        </li>
-      </ul>
-    </aside>
-  </div>
+          <div class="metric-list">
+            <button
+              *ngFor="let metric of canvasGroups[0].metrics"
+              type="button"
+              class="metric-pill"
+              [class.active]="selectedMetric?.id === metric.id"
+              (click)="selectMetric(metric)"
+            >
+              <span class="metric-pill-name">{{ metric.name }}</span>
+              <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
+            </button>
+          </div>
+        </div>
 
-  <div class="canvas-center-node">
-    <div class="center-node-icon">⛨</div>
-    <div class="center-node-content">
-      <span class="center-node-id">{{ metricTree.data['control_id'] }}</span>
-      <h2>{{ metricTree.name }}</h2>
-    </div>
-  </div>
+        <div class="canvas-group validation-group" *ngIf="canvasGroups[1]">
+          <div class="group-node">
+            <div class="group-node-title">{{ canvasGroups[1].title }}</div>
+            <div class="group-node-count">{{ canvasGroups[1].count }}</div>
+          </div>
 
-  <div class="canvas-group verification-group" *ngIf="canvasGroups[0]">
-    <div class="group-node">
-      <div class="group-node-title">{{ canvasGroups[0].title }}</div>
-      <div class="group-node-count">{{ canvasGroups[0].count }}</div>
-    </div>
+          <div class="metric-list">
+            <button
+              *ngFor="let metric of canvasGroups[1].metrics"
+              type="button"
+              class="metric-pill"
+              [class.active]="selectedMetric?.id === metric.id"
+              (click)="selectMetric(metric)"
+            >
+              <span class="metric-pill-name">{{ metric.name }}</span>
+              <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
+            </button>
+          </div>
+        </div>
 
-    <div class="metric-list">
-      <button
-        *ngFor="let metric of canvasGroups[0].metrics"
-        type="button"
-        class="metric-pill"
-        [class.active]="selectedMetric?.id === metric.id"
-        (click)="selectMetric(metric)"
-      >
-        <span class="metric-pill-name">{{ metric.name }}</span>
-        <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
-      </button>
-    </div>
-  </div>
+        <aside class="metric-detail-panel" *ngIf="selectedMetric">
+          <div class="detail-header">
+            <p class="detail-kicker">Metrikdetails</p>
+            <h3>{{ selectedMetric.name }}</h3>
+            <div class="detail-score-chip">
+              Score: {{ formatScore(selectedMetric.score) }}
+            </div>
+          </div>
 
-  <div class="canvas-group validation-group" *ngIf="canvasGroups[1]">
-    <div class="group-node">
-      <div class="group-node-title">{{ canvasGroups[1].title }}</div>
-      <div class="group-node-count">{{ canvasGroups[1].count }}</div>
-    </div>
+          <div class="detail-section">
+            <h4>Beschreibung</h4>
+            <p>{{ selectedMetricDescription }}</p>
+          </div>
 
-    <div class="metric-list">
-      <button
-        *ngFor="let metric of canvasGroups[1].metrics"
-        type="button"
-        class="metric-pill"
-        [class.active]="selectedMetric?.id === metric.id"
-        (click)="selectMetric(metric)"
-      >
-        <span class="metric-pill-name">{{ metric.name }}</span>
-        <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
-      </button>
-    </div>
-  </div>
-
-  <aside class="metric-detail-panel" *ngIf="selectedMetric">
-    <div class="detail-header">
-      <p class="detail-kicker">Metrikdetails</p>
-      <h3>{{ selectedMetric.name }}</h3>
-      <div class="detail-score-chip">
-        Score: {{ formatScore(selectedMetric.score) }}
+          <div class="detail-section">
+            <h4>Formel</h4>
+            <p>{{ selectedMetricFormula }}</p>
+          </div>
+        </aside>
       </div>
-    </div>
-
-    <div class="detail-section">
-      <h4>Beschreibung</h4>
-      <p>{{ selectedMetricDescription }}</p>
-    </div>
-
-    <div class="detail-section">
-      <h4>Formel</h4>
-      <p>{{ selectedMetricFormula }}</p>
-    </div>
-  </aside>
-</div>
 
       <div *ngIf="!isLoading && !metricTree && !errorMessage" class="empty-state">
         Keine Metric-Daten vorhanden.
@@ -269,12 +223,4 @@
     </section>
   </main>
 
-  <footer class="metric-legend">
-    <h3>Legende</h3>
-    <div class="legend-items">
-      <span>Struktur</span>
-      <span>Metriken</span>
-      <span>Evidenz</span>
-    </div>
-  </footer>
 </div>

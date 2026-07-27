@@ -20,6 +20,12 @@ interface CanvasGroup {
   metrics: CanvasMetricItem[];
 }
 
+interface EvidenceTypeExplanation {
+  code: string;
+  label: string;
+  text: string;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -39,6 +45,42 @@ export class AppComponent implements OnInit {
 
   canvasGroups: CanvasGroup[] = [];
   selectedMetric: CanvasMetricItem | null = null;
+
+  isEvidenceInfoExpanded = true;
+  isEvidenceListExpanded = true;
+
+  readonly evidenceIntroText =
+    'Evidenzen beschreiben, auf welcher Beobachtungs- oder Nachweisbasis eine Maßnahme bewertet wird. ' +
+    'Evidenzarten strukturieren dabei die Herkunft des Nachweises, zum Beispiel Logs, Konfigurationen, Beobachtungen, Interviews oder Policy-Dokumente. ' +
+    'Beispiel-Assets konkretisieren, an welchem System, Artefakt oder Dokument die Evidenz sichtbar wird, etwa in SIEM-Logs, IAM-Konfigurationen, Richtlinien oder Gesprächsnotizen.';
+
+  readonly evidenceTypeExplanations: EvidenceTypeExplanation[] = [
+    {
+      code: 'LOGS',
+      label: 'Logs',
+      text: 'Maschinell erzeugte Ereignis- und Protokolldaten, zum Beispiel aus SIEM-, IAM- oder Systemquellen.'
+    },
+    {
+      code: 'KONFIG',
+      label: 'Config',
+      text: 'Konfigurationsstände und technische Einstellungen in Anwendungen, Plattformen oder Diensten.'
+    },
+    {
+      code: 'BEOBACHTUNG',
+      label: 'Beobachtung',
+      text: 'Direkt beobachtbare Umsetzungen in Prozessen, Abläufen oder Bedienhandlungen.'
+    },
+    {
+      code: 'INTERVIEWS',
+      label: 'Interview',
+      text: 'Aussagen und Einordnungen aus Gesprächen mit verantwortlichen Rollen oder Beteiligten.'
+    },
+    {
+      code: 'POLICY_DOKUMENTE',
+      label: 'Policy-Dokumente',
+      text: 'Richtlinien, Vorgaben, Arbeitsanweisungen und formale Nachweisdokumente.'
+    }
+  ];
 
   ngOnInit(): void {
     this.loadControls();
@@ -72,6 +114,8 @@ export class AppComponent implements OnInit {
     this.metricTree = null;
     this.canvasGroups = [];
     this.selectedMetric = null;
+    this.isEvidenceInfoExpanded = true;
+    this.isEvidenceListExpanded = true;
 
     this.metricViewService.getMetricViewForControl(controlId).subscribe({
       next: (response) => {
@@ -100,6 +144,15 @@ export class AppComponent implements OnInit {
 
   selectMetric(metric: CanvasMetricItem): void {
     this.selectedMetric = metric;
+    this.isEvidenceListExpanded = true;
+  }
+
+  toggleEvidenceInfo(): void {
+    this.isEvidenceInfoExpanded = !this.isEvidenceInfoExpanded;
+  }
+
+  toggleEvidenceList(): void {
+    this.isEvidenceListExpanded = !this.isEvidenceListExpanded;
   }
 
   private buildCanvasViewModel(): void {
