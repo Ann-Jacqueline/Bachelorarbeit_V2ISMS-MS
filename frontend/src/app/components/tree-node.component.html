@@ -1,5 +1,5 @@
 <div class="tree-node">
-  <div class="node-card" [ngClass]="node.type">
+  <div class="node-card" [ngClass]="node.node_type">
     <div class="node-header">
       <div class="toggle-icon">
         <span *ngIf="node.children && node.children.length > 0">•</span>
@@ -7,8 +7,8 @@
       </div>
 
       <div class="node-title-group">
-        <div class="node-title">{{ node.label }}</div>
-        <div class="node-meta">{{ node.type }}</div>
+        <div class="node-title">{{ node.name }}</div>
+        <div class="node-meta">{{ node.node_type }}</div>
       </div>
     </div>
 

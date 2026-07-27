@@ -2,12 +2,28 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MetricViewService } from './services/metric-view.service';
 import { ControlListItem, MetricTreeNode } from './models/metric.models';
-import { TreeNodeComponent } from './components/tree-node.component';
+
+interface CanvasMetricItem {
+  id: string;
+  name: string;
+  score: number | null;
+  details: MetricTreeNode | null;
+  evidencesNode: MetricTreeNode | null;
+  rawNode: MetricTreeNode;
+}
+
+interface CanvasGroup {
+  id: string;
+  title: string;
+  type: 'verification' | 'validation';
+  count: number;
+  metrics: CanvasMetricItem[];
+}
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, TreeNodeComponent],
+  imports: [CommonModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -20,6 +36,9 @@ export class AppComponent implements OnInit {
 
   isLoading = false;
   errorMessage: string | null = null;
+
+  canvasGroups: CanvasGroup[] = [];
+  selectedMetric: CanvasMetricItem | null = null;
 
   ngOnInit(): void {
     this.loadControls();
@@ -50,15 +69,21 @@ export class AppComponent implements OnInit {
   loadMetricView(controlId: string): void {
     this.isLoading = true;
     this.errorMessage = null;
+    this.metricTree = null;
+    this.canvasGroups = [];
+    this.selectedMetric = null;
 
     this.metricViewService.getMetricViewForControl(controlId).subscribe({
       next: (response) => {
         this.metricTree = response.data;
+        this.buildCanvasViewModel();
         this.isLoading = false;
       },
       error: () => {
         this.errorMessage = 'Fehler beim Laden der Metric View.';
         this.metricTree = null;
+        this.canvasGroups = [];
+        this.selectedMetric = null;
         this.isLoading = false;
       }
     });
@@ -71,5 +96,87 @@ export class AppComponent implements OnInit {
 
     this.selectedControlId = controlId;
     this.loadMetricView(controlId);
+  }
+
+  selectMetric(metric: CanvasMetricItem): void {
+    this.selectedMetric = metric;
+  }
+
+  private buildCanvasViewModel(): void {
+    if (!this.metricTree?.children) {
+      this.canvasGroups = [];
+      this.selectedMetric = null;
+      return;
+    }
+
+    this.canvasGroups = this.metricTree.children
+      .filter((child) => child.node_type === 'metric_group')
+      .map((groupNode) => {
+        const metrics = (groupNode.children ?? [])
+          .filter((child) => child.node_type === 'metric')
+          .map((metricNode) => this.mapMetricNode(metricNode));
+
+        return {
+          id: groupNode.id,
+          title: groupNode.name,
+          type: groupNode.id.includes('verification') ? 'verification' : 'validation',
+          count: metrics.length,
+          metrics
+        } as CanvasGroup;
+      });
+
+    const firstMetric = this.canvasGroups.flatMap((group) => group.metrics)[0] ?? null;
+    this.selectedMetric = firstMetric;
+  }
+
+  private mapMetricNode(metricNode: MetricTreeNode): CanvasMetricItem {
+    const scoreNode =
+      metricNode.children?.find((child) => child.node_type === 'score') ?? null;
+
+    const detailsNode =
+      metricNode.children?.find((child) => child.node_type === 'metric_details') ?? null;
+
+    const evidencesNode =
+      metricNode.children?.find((child) => child.node_type === 'evidenzen') ?? null;
+
+    const score =
+      typeof scoreNode?.data?.['total_score'] === 'number'
+        ? scoreNode.data['total_score']
+        : typeof metricNode.data?.['total_score'] === 'number'
+        ? metricNode.data['total_score']
+        : null;
+
+    return {
+      id: metricNode.id,
+      name: metricNode.name,
+      score,
+      details: detailsNode,
+      evidencesNode,
+      rawNode: metricNode
+    };
+  }
+
+  get controlDescription(): string {
+    return this.metricTree?.data?.['beschreibung'] ?? '';
+  }
+
+  get selectedMetricDescription(): string {
+    return this.selectedMetric?.details?.data?.['beschreibung'] ?? 'Keine Beschreibung vorhanden.';
+  }
+
+  get selectedMetricFormula(): string {
+    return this.selectedMetric?.details?.data?.['formel'] ?? 'Keine Formel vorhanden.';
+  }
+
+  get selectedEvidenceItems(): MetricTreeNode[] {
+    return this.selectedMetric?.evidencesNode?.children ?? [];
+  }
+
+  formatScore(score: number | null): string {
+    if (score === null || Number.isNaN(score)) {
+      return 'n/a';
+    }
+
+    return `${(score * 100).toFixed(1)}%`;
   }
 }
