@@ -48,26 +48,79 @@
         Metric View wird geladen...
       </div>
 
-      <div *ngIf="!isLoading && metricTree" class="canvas-scene">
-        <svg class="scene-connections" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true">
-          <path class="connection-line profile-line" d="M 470 230 C 560 280, 610 340, 665 430" />
-          <path class="connection-line evidence-line" d="M 470 605 C 560 560, 610 520, 665 470" />
-
-          <path class="connection-line metric-line" d="M 850 420 C 965 290, 1080 255, 1180 250" />
-          <path class="connection-line metric-line" d="M 850 450 C 980 445, 1085 430, 1180 420" />
-          <path class="connection-line metric-line" d="M 850 480 C 970 575, 1080 625, 1180 645" />
-
-          <circle class="connection-dot structure-dot" cx="470" cy="230" r="6" />
-          <circle class="connection-dot evidence-dot" cx="470" cy="605" r="6" />
-          <circle class="connection-dot structure-dot" cx="850" cy="450" r="6" />
-
-          <circle class="connection-dot metric-dot" cx="1180" cy="250" r="6" />
-          <circle class="connection-dot metric-dot" cx="1180" cy="420" r="6" />
-          <circle class="connection-dot metric-dot" cx="1180" cy="645" r="6" />
+      <div *ngIf="!isLoading && metricTree" class="canvas-scene" #canvasScene>
+        <svg class="scene-connections" preserveAspectRatio="none" aria-hidden="true">
+          <path
+            *ngIf="connectors.profile"
+            class="connection-line profile-line"
+            [attr.d]="getConnectorPath('profile')"
+          />
+          <path
+            *ngIf="connectors.evidence"
+            class="connection-line evidence-line"
+            [attr.d]="getConnectorPath('evidence')"
+          />
+          <path
+            *ngIf="connectors.verification"
+            class="connection-line metric-line"
+            [attr.d]="getConnectorPath('verification')"
+          />
+          <path
+            *ngIf="connectors.validation"
+            class="connection-line metric-line"
+            [attr.d]="getConnectorPath('validation')"
+          />
         </svg>
+        <button
+          *ngIf="connectors.profile"
+          type="button"
+          class="connection-hotspot structure active"
+          [ngStyle]="getConnectorPointStyle('profile')"
+          (click)="togglePanel('profile')"
+          aria-label="Control-Profil ein- oder ausblenden"
+        ></button>
+
+        <button
+          *ngIf="connectors.evidence"
+          type="button"
+          class="connection-hotspot evidence active"
+          [ngStyle]="getConnectorPointStyle('evidence')"
+          (click)="togglePanel('evidence')"
+          aria-label="Evidenzen ein- oder ausblenden"
+        ></button>
+
+        <button
+          *ngIf="connectors.verification"
+          type="button"
+          class="connection-hotspot metric active"
+          [ngStyle]="getConnectorPointStyle('verification')"
+          (click)="toggleGroup('verification')"
+          aria-label="Verifikationsmetriken ein- oder ausblenden"
+        ></button>
+
+        <button
+          *ngIf="connectors.validation"
+          type="button"
+          class="connection-hotspot metric active"
+          [ngStyle]="getConnectorPointStyle('validation')"
+          (click)="toggleGroup('validation')"
+          aria-label="Validierungsmetriken ein- oder ausblenden"
+        ></button>
 
         <div class="left-column">
-          <aside class="control-profile-panel">
+          <aside class="control-profile-panel" *ngIf="isPanelVisible('profile')" #profilePanel>
+            <div class="panel-frame-toggle">
+              <span class="panel-frame-label">Struktur</span>
+              <button
+                type="button"
+                class="panel-ghost-toggle"
+                (click)="togglePanel('profile')"
+                aria-label="Control-Profil schließen"
+              >
+                −
+              </button>
+            </div>
+
             <div class="profile-header">
               <p class="profile-kicker">Control-Profil</p>
               <h3>{{ metricTree.name }}</h3>
@@ -84,7 +137,23 @@
             </div>
           </aside>
 
-          <aside class="evidence-panel" *ngIf="selectedEvidenceItems.length > 0">
+          <aside
+            class="evidence-panel"
+            *ngIf="isPanelVisible('evidence') && selectedEvidenceItems.length > 0"
+            #evidencePanel
+          >
+            <div class="panel-frame-toggle">
+              <span class="panel-frame-label">Evidenz</span>
+              <button
+                type="button"
+                class="panel-ghost-toggle"
+                (click)="togglePanel('evidence')"
+                aria-label="Evidenzen schließen"
+              >
+                −
+              </button>
+            </div>
+
             <div class="evidence-panel-header">
               <p class="evidence-panel-kicker">Evidenzen</p>
               <h3>{{ selectedMetric?.name }}</h3>
@@ -94,14 +163,14 @@
               <button
                 type="button"
                 class="accordion-toggle"
-                (click)="toggleEvidenceInfo()"
-                [attr.aria-expanded]="isEvidenceInfoExpanded"
+                (click)="toggleEvidenceSection('info')"
+                [attr.aria-expanded]="isEvidenceSectionOpen('info')"
               >
                 <span>Was bedeuten Evidenzarten und Beispiel-Assets?</span>
-                <span class="accordion-icon">{{ isEvidenceInfoExpanded ? '−' : '+' }}</span>
+                <span class="accordion-icon">{{ isEvidenceSectionOpen('info') ? '−' : '+' }}</span>
               </button>
 
-              <div class="accordion-body" *ngIf="isEvidenceInfoExpanded">
+              <div class="accordion-body" *ngIf="isEvidenceSectionOpen('info')">
                 <p class="evidence-intro-text">
                   {{ evidenceIntroText }}
                 </p>
@@ -119,14 +188,14 @@
               <button
                 type="button"
                 class="accordion-toggle"
-                (click)="toggleEvidenceList()"
-                [attr.aria-expanded]="isEvidenceListExpanded"
+                (click)="toggleEvidenceSection('items')"
+                [attr.aria-expanded]="isEvidenceSectionOpen('items')"
               >
                 <span>Einzelne Evidenzen anzeigen</span>
-                <span class="accordion-icon">{{ isEvidenceListExpanded ? '−' : '+' }}</span>
+                <span class="accordion-icon">{{ isEvidenceSectionOpen('items') ? '−' : '+' }}</span>
               </button>
 
-              <ul class="evidence-card-list" *ngIf="isEvidenceListExpanded">
+              <ul class="evidence-card-list" *ngIf="isEvidenceSectionOpen('items')">
                 <li *ngFor="let evidence of selectedEvidenceItems" class="evidence-card">
                   <div class="evidence-card-topline">
                     <span class="evidence-asset">
@@ -146,89 +215,113 @@
           </aside>
         </div>
 
-        <div class="canvas-center-node">
+        <div class="canvas-center-node" #centerNode>
+          <button
+            type="button"
+            class="center-reset-button"
+            (click)="resetCanvasView()"
+            aria-label="Strukturen und Komponenten zurücksetzen"
+          >
+            Reset Komponenten
+          </button>
+
           <div class="center-node-icon">⛨</div>
+
           <div class="center-node-content">
             <span class="center-node-id">{{ metricTree.data['control_id'] }}</span>
             <h2>{{ metricTree.name }}</h2>
           </div>
         </div>
 
-        <section
-          *ngFor="let group of canvasGroups"
-          class="canvas-group"
-          [ngClass]="{
-            'verification-group': group.type === 'verification',
-            'validation-group': group.type === 'validation'
-          }"
-        >
-          <div class="group-node">
-            <div class="group-node-main">
-              <span class="group-node-title">{{ group.title }}</span>
+        <ng-container *ngFor="let group of canvasGroups">
+          <section
+            class="canvas-group"
+            *ngIf="isPanelVisible(group.type)"
+            [attr.data-group-type]="group.type"
+            #groupPanel
+            [ngClass]="{
+              'verification-group': group.type === 'verification',
+              'validation-group': group.type === 'validation'
+            }"
+          >
+            <div class="group-node">
+              <div class="group-node-main">
+                <span class="group-node-title">{{ group.title }}</span>
 
-              <div class="group-info-wrapper">
+                <div class="group-info-wrapper">
+                  <button
+                    type="button"
+                    class="info-dot"
+                    aria-label="Gruppenbeschreibung anzeigen"
+                  >
+                    i
+                  </button>
+                  <div class="group-info-tooltip">
+                    {{ getGroupInfoText(group) }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="group-node-actions">
+                <span class="group-node-count">{{ group.count }}</span>
                 <button
                   type="button"
-                  class="info-dot"
-                  aria-label="Gruppenbeschreibung anzeigen"
+                  class="panel-ghost-toggle"
+                  (click)="toggleGroup(group.type)"
+                  aria-label="Metrikgruppe schließen"
                 >
-                  i
+                  −
                 </button>
-                <div class="group-info-tooltip">
-                  {{ getGroupInfoText(group) }}
-                </div>
               </div>
             </div>
 
-            <span class="group-node-count">{{ group.count }}</span>
-          </div>
+            <div class="metric-list">
+              <article
+                *ngFor="let metric of group.metrics"
+                class="metric-accordion"
+                [class.active]="selectedMetric?.id === metric.id"
+                [class.expanded]="isMetricExpanded(metric.id)"
+              >
+                <button
+                  type="button"
+                  class="metric-pill"
+                  [class.active]="selectedMetric?.id === metric.id"
+                  (click)="selectMetric(metric); toggleMetricDetails(metric)"
+                >
+                  <span class="metric-pill-name">{{ metric.name }}</span>
 
-          <div class="metric-list">
-        <article
-          *ngFor="let metric of group.metrics"
-          class="metric-accordion"
-          [class.active]="selectedMetric?.id === metric.id"
-          [class.expanded]="isMetricExpanded(metric.id)"
-        >
-          <button
-            type="button"
-            class="metric-pill"
-            [class.active]="selectedMetric?.id === metric.id"
-            (click)="selectMetric(metric); toggleMetricDetails(metric.id)"
-          >
-            <span class="metric-pill-name">{{ metric.name }}</span>
+                  <span class="metric-pill-meta">
+                    <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
+                    <span class="metric-expand-icon">
+                      {{ isMetricExpanded(metric.id) ? '−' : '+' }}
+                    </span>
+                  </span>
+                </button>
 
-            <span class="metric-pill-meta">
-              <span class="metric-pill-score">{{ formatScore(metric.score) }}</span>
-              <span class="metric-expand-icon">
-                {{ isMetricExpanded(metric.id) ? '−' : '+' }}
-              </span>
-            </span>
-          </button>
+                <div
+                  class="metric-detail-inline"
+                  *ngIf="isMetricExpanded(metric.id)"
+                >
+                  <div class="metric-detail-topline">
+                    <span class="detail-score-chip">
+                    Control Umsetzungsscore der Metrik: {{ formatScore(metric.score) }}
+                  </span>
+                  </div>
 
-          <aside
-            class="metric-detail-flyout"
-            *ngIf="isMetricExpanded(metric.id)"
-          >
-            <div class="metric-detail-topline">
-              <span class="detail-score-chip">
-                Score: {{ formatScore(metric.score) }}
-              </span>
+                  <div class="detail-section">
+                    <h4>Beschreibung</h4>
+                    <p>{{ metric.details?.data?.['beschreibung'] || 'Keine Beschreibung vorhanden.' }}</p>
+                  </div>
+
+                  <div class="detail-section">
+                    <h4>Formel</h4>
+                    <p>{{ metric.details?.data?.['formel'] || 'Keine Formel vorhanden.' }}</p>
+                  </div>
+                </div>
+              </article>
             </div>
-
-            <div class="detail-section">
-              <h4>Beschreibung</h4>
-              <p>{{ metric.details?.data?.['beschreibung'] || 'Keine Beschreibung vorhanden.' }}</p>
-            </div>
-
-            <div class="detail-section">
-              <h4>Formel</h4>
-              <p>{{ metric.details?.data?.['formel'] || 'Keine Formel vorhanden.' }}</p>
-            </div>
-          </aside>
-        </article>
-      </div>
-        </section>
+          </section>
+        </ng-container>
       </div>
 
       <div *ngIf="!isLoading && !metricTree && !errorMessage" class="empty-state">

@@ -1,4 +1,14 @@
-import { Component, OnInit, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  HostListener,
+  OnInit,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+  inject
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MetricViewService } from './services/metric-view.service';
 import { ControlListItem, MetricTreeNode } from './models/metric.models';
@@ -10,6 +20,7 @@ interface CanvasMetricItem {
   details: MetricTreeNode | null;
   evidencesNode: MetricTreeNode | null;
   rawNode: MetricTreeNode;
+  groupType: 'verification' | 'validation';
 }
 
 interface CanvasGroup {
@@ -26,6 +37,21 @@ interface EvidenceTypeExplanation {
   text: string;
 }
 
+type PanelKey = 'profile' | 'evidence' | 'verification' | 'validation';
+type EvidenceSectionKey = 'info' | 'items' | null;
+type ConnectorKey = 'profile' | 'evidence' | 'verification' | 'validation';
+
+interface ConnectorPoint {
+  x: number;
+  y: number;
+}
+
+interface ConnectorModel {
+  start: ConnectorPoint;
+  end: ConnectorPoint;
+  control: ConnectorPoint;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -33,8 +59,14 @@ interface EvidenceTypeExplanation {
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, AfterViewInit {
   private metricViewService = inject(MetricViewService);
+
+  @ViewChild('canvasScene') canvasSceneRef?: ElementRef<HTMLElement>;
+  @ViewChild('centerNode') centerNodeRef?: ElementRef<HTMLElement>;
+  @ViewChild('profilePanel') profilePanelRef?: ElementRef<HTMLElement>;
+  @ViewChild('evidencePanel') evidencePanelRef?: ElementRef<HTMLElement>;
+  @ViewChildren('groupPanel') groupPanelRefs?: QueryList<ElementRef<HTMLElement>>;
 
   controls: ControlListItem[] = [];
   selectedControlId: string | null = null;
@@ -46,10 +78,23 @@ export class AppComponent implements OnInit {
   canvasGroups: CanvasGroup[] = [];
   selectedMetric: CanvasMetricItem | null = null;
 
-  isEvidenceInfoExpanded = true;
-  isEvidenceListExpanded = true;
+  evidenceOpenSection: EvidenceSectionKey = 'info';
 
   expandedMetricIds = new Set<string>();
+
+  panelVisibility: Record<PanelKey, boolean> = {
+    profile: true,
+    evidence: true,
+    verification: true,
+    validation: true
+  };
+
+  connectors: Record<ConnectorKey, ConnectorModel | null> = {
+    profile: null,
+    evidence: null,
+    verification: null,
+    validation: null
+  };
 
   readonly evidenceIntroText =
     'Evidenzen beschreiben, auf welcher Beobachtungs- oder Nachweisbasis eine Maßnahme bewertet wird. ' +
@@ -94,6 +139,19 @@ export class AppComponent implements OnInit {
     this.loadControls();
   }
 
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.updateConnectors());
+
+    this.groupPanelRefs?.changes.subscribe(() => {
+      setTimeout(() => this.updateConnectors());
+    });
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateConnectors();
+  }
+
   loadControls(): void {
     this.isLoading = true;
     this.errorMessage = null;
@@ -122,22 +180,31 @@ export class AppComponent implements OnInit {
     this.metricTree = null;
     this.canvasGroups = [];
     this.selectedMetric = null;
-    this.isEvidenceInfoExpanded = true;
-    this.isEvidenceListExpanded = true;
+    this.evidenceOpenSection = 'info';
     this.expandedMetricIds.clear();
+    this.panelVisibility = {
+      profile: true,
+      evidence: true,
+      verification: true,
+      validation: true
+    };
+    this.resetConnectors();
 
     this.metricViewService.getMetricViewForControl(controlId).subscribe({
       next: (response) => {
         this.metricTree = response.data;
         this.buildCanvasViewModel();
         this.isLoading = false;
+        setTimeout(() => this.updateConnectors());
       },
       error: () => {
         this.errorMessage = 'Fehler beim Laden der Metric View.';
         this.metricTree = null;
         this.canvasGroups = [];
         this.selectedMetric = null;
+        this.evidenceOpenSection = 'info';
         this.expandedMetricIds.clear();
+        this.resetConnectors();
         this.isLoading = false;
       }
     });
@@ -154,23 +221,38 @@ export class AppComponent implements OnInit {
 
   selectMetric(metric: CanvasMetricItem): void {
     this.selectedMetric = metric;
-    this.isEvidenceListExpanded = true;
+    this.evidenceOpenSection = 'info';
+    setTimeout(() => this.updateConnectors());
   }
 
-  toggleEvidenceInfo(): void {
-    this.isEvidenceInfoExpanded = !this.isEvidenceInfoExpanded;
+  toggleEvidenceSection(section: 'info' | 'items'): void {
+    this.evidenceOpenSection = this.evidenceOpenSection === section ? null : section;
+    setTimeout(() => this.updateConnectors());
   }
 
-  toggleEvidenceList(): void {
-    this.isEvidenceListExpanded = !this.isEvidenceListExpanded;
+  isEvidenceSectionOpen(section: 'info' | 'items'): boolean {
+    return this.evidenceOpenSection === section;
   }
 
-  toggleMetricDetails(metricId: string): void {
-    if (this.expandedMetricIds.has(metricId)) {
-      this.expandedMetricIds.delete(metricId);
+  toggleMetricDetails(metric: CanvasMetricItem): void {
+    const idsInSameGroup = this.canvasGroups
+      .find((group) => group.type === metric.groupType)
+      ?.metrics.map((item) => item.id) ?? [];
+
+    idsInSameGroup.forEach((id) => {
+      if (id !== metric.id) {
+        this.expandedMetricIds.delete(id);
+      }
+    });
+
+    if (this.expandedMetricIds.has(metric.id)) {
+      this.expandedMetricIds.delete(metric.id);
     } else {
-      this.expandedMetricIds.add(metricId);
+      this.expandedMetricIds.add(metric.id);
+      this.selectedMetric = metric;
     }
+
+    setTimeout(() => this.updateConnectors());
   }
 
   isMetricExpanded(metricId: string): boolean {
@@ -183,6 +265,57 @@ export class AppComponent implements OnInit {
       : this.validationInfoText;
   }
 
+  togglePanel(panel: PanelKey): void {
+    this.panelVisibility[panel] = !this.panelVisibility[panel];
+    setTimeout(() => this.updateConnectors());
+  }
+
+  isPanelVisible(panel: PanelKey): boolean {
+    return this.panelVisibility[panel];
+  }
+
+  toggleGroup(groupType: 'verification' | 'validation'): void {
+    this.panelVisibility[groupType] = !this.panelVisibility[groupType];
+
+    if (!this.panelVisibility[groupType]) {
+      const ids = this.canvasGroups
+        .find((group) => group.type === groupType)
+        ?.metrics.map((metric) => metric.id) ?? [];
+
+      ids.forEach((id) => this.expandedMetricIds.delete(id));
+
+      if (this.selectedMetric?.groupType === groupType) {
+        this.selectedMetric = null;
+      }
+    }
+
+    setTimeout(() => this.updateConnectors());
+  }
+
+  getConnectorPath(key: ConnectorKey): string {
+    const connector = this.connectors[key];
+
+    if (!connector) {
+      return '';
+    }
+
+    const { start, end, control } = connector;
+    return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
+  }
+
+  getConnectorPointStyle(key: ConnectorKey): Record<string, string> {
+    const connector = this.connectors[key];
+
+    if (!connector) {
+      return { display: 'none' };
+    }
+
+    return {
+      left: `${connector.end.x}px`,
+      top: `${connector.end.y}px`
+    };
+  }
+
   private buildCanvasViewModel(): void {
     if (!this.metricTree?.children) {
       this.canvasGroups = [];
@@ -193,14 +326,17 @@ export class AppComponent implements OnInit {
     this.canvasGroups = this.metricTree.children
       .filter((child) => child.node_type === 'metric_group')
       .map((groupNode) => {
+        const groupType: 'verification' | 'validation' =
+          groupNode.id.includes('verification') ? 'verification' : 'validation';
+
         const metrics = (groupNode.children ?? [])
           .filter((child) => child.node_type === 'metric')
-          .map((metricNode) => this.mapMetricNode(metricNode));
+          .map((metricNode) => this.mapMetricNode(metricNode, groupType));
 
         return {
           id: groupNode.id,
           title: groupNode.name,
-          type: groupNode.id.includes('verification') ? 'verification' : 'validation',
+          type: groupType,
           count: metrics.length,
           metrics
         } as CanvasGroup;
@@ -209,7 +345,10 @@ export class AppComponent implements OnInit {
     this.selectedMetric = this.canvasGroups.flatMap((group) => group.metrics)[0] ?? null;
   }
 
-  private mapMetricNode(metricNode: MetricTreeNode): CanvasMetricItem {
+  private mapMetricNode(
+    metricNode: MetricTreeNode,
+    groupType: 'verification' | 'validation'
+  ): CanvasMetricItem {
     const scoreNode =
       metricNode.children?.find((child) => child.node_type === 'score') ?? null;
 
@@ -232,20 +371,113 @@ export class AppComponent implements OnInit {
       score,
       details: detailsNode,
       evidencesNode,
-      rawNode: metricNode
+      rawNode: metricNode,
+      groupType
+    };
+  }
+
+  private updateConnectors(): void {
+    const sceneEl = this.canvasSceneRef?.nativeElement;
+    const centerEl = this.centerNodeRef?.nativeElement;
+
+    if (!sceneEl || !centerEl) {
+      this.resetConnectors();
+      return;
+    }
+
+    const isMobileLayout = window.innerWidth <= 1450;
+    if (isMobileLayout) {
+      this.resetConnectors();
+      return;
+    }
+
+    const sceneRect = sceneEl.getBoundingClientRect();
+    const centerRect = centerEl.getBoundingClientRect();
+
+    const profileEl = this.panelVisibility.profile ? this.profilePanelRef?.nativeElement : undefined;
+    const evidenceEl = this.panelVisibility.evidence ? this.evidencePanelRef?.nativeElement : undefined;
+
+    const groupElements = this.groupPanelRefs?.toArray().map((ref) => ref.nativeElement) ?? [];
+    const verificationEl = this.panelVisibility.verification
+      ? groupElements.find((el) => el.dataset['groupType'] === 'verification')
+      : undefined;
+    const validationEl = this.panelVisibility.validation
+      ? groupElements.find((el) => el.dataset['groupType'] === 'validation')
+      : undefined;
+
+    this.connectors.profile = profileEl
+      ? this.buildConnector(sceneRect, centerRect, profileEl.getBoundingClientRect(), 'left', 26)
+      : null;
+
+    this.connectors.evidence = evidenceEl
+      ? this.buildConnector(sceneRect, centerRect, evidenceEl.getBoundingClientRect(), 'left', 26)
+      : null;
+
+    this.connectors.verification = verificationEl
+      ? this.buildConnector(sceneRect, centerRect, verificationEl.getBoundingClientRect(), 'right', 26)
+      : null;
+
+    this.connectors.validation = validationEl
+      ? this.buildConnector(sceneRect, centerRect, validationEl.getBoundingClientRect(), 'right', 26)
+      : null;
+  }
+
+  private buildConnector(
+    sceneRect: DOMRect,
+    centerRect: DOMRect,
+    targetRect: DOMRect,
+    side: 'left' | 'right',
+    gap: number
+  ): ConnectorModel {
+    const center = {
+      x: centerRect.left - sceneRect.left + centerRect.width / 2,
+      y: centerRect.top - sceneRect.top + centerRect.height / 2
+    };
+
+    const radius = Math.min(centerRect.width, centerRect.height) / 2 + 12;
+
+    const target = {
+      x:
+        side === 'left'
+          ? targetRect.right - sceneRect.left + gap
+          : targetRect.left - sceneRect.left - gap,
+      y: targetRect.top - sceneRect.top + targetRect.height / 2
+    };
+
+    const dx = target.x - center.x;
+    const dy = target.y - center.y;
+    const distance = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+
+    const start = {
+      x: center.x + (dx / distance) * radius,
+      y: center.y + (dy / distance) * radius
+    };
+
+    const curveOffset = Math.min(120, Math.max(70, Math.abs(dx) * 0.18));
+
+    const control = {
+      x: center.x + dx * 0.5,
+      y: center.y + dy * 0.5 + (side === 'left' ? -curveOffset * 0.22 : curveOffset * 0.12)
+    };
+
+    return {
+      start,
+      end: target,
+      control
+    };
+  }
+
+  private resetConnectors(): void {
+    this.connectors = {
+      profile: null,
+      evidence: null,
+      verification: null,
+      validation: null
     };
   }
 
   get controlDescription(): string {
     return this.metricTree?.data?.['beschreibung'] ?? '';
-  }
-
-  get selectedMetricDescription(): string {
-    return this.selectedMetric?.details?.data?.['beschreibung'] ?? 'Keine Beschreibung vorhanden.';
-  }
-
-  get selectedMetricFormula(): string {
-    return this.selectedMetric?.details?.data?.['formel'] ?? 'Keine Formel vorhanden.';
   }
 
   get selectedEvidenceItems(): MetricTreeNode[] {
@@ -267,4 +499,19 @@ export class AppComponent implements OnInit {
 
     return code.replace(/_/g, ' ');
   }
+  resetCanvasView(): void {
+  this.panelVisibility = {
+    profile: true,
+    evidence: true,
+    verification: true,
+    validation: true
+  };
+
+  this.evidenceOpenSection = 'info';
+  this.expandedMetricIds.clear();
+
+  this.selectedMetric = this.canvasGroups.flatMap((group) => group.metrics)[0] ?? null;
+
+  setTimeout(() => this.updateConnectors());
+}
 }
