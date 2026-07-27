@@ -125,8 +125,7 @@ export class AppComponent implements OnInit {
         } as CanvasGroup;
       });
 
-    const firstMetric = this.canvasGroups.flatMap((group) => group.metrics)[0] ?? null;
-    this.selectedMetric = firstMetric;
+    this.selectedMetric = this.canvasGroups.flatMap((group) => group.metrics)[0] ?? null;
   }
 
   private mapMetricNode(metricNode: MetricTreeNode): CanvasMetricItem {
@@ -178,5 +177,13 @@ export class AppComponent implements OnInit {
     }
 
     return `${(score * 100).toFixed(1)}%`;
+  }
+
+  formatEvidenceType(code: string | undefined): string {
+    if (!code) {
+      return 'n/a';
+    }
+
+    return code.replace(/_/g, ' ');
   }
 }
