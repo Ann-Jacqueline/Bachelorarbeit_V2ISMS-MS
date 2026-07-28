@@ -1,0 +1,259 @@
+<div class="assessment-shell">
+  <aside class="assessment-sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">⬡</div>
+      <div>
+        <p class="brand-eyebrow">Maturity Evaluator</p>
+        <h1>Schicht 4</h1>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-head">
+        <span>Controls</span>
+      </div>
+
+      <div *ngIf="isLoading" class="sidebar-state">Lade Controls ...</div>
+      <div *ngIf="errorMessage" class="sidebar-state error">{{ errorMessage }}</div>
+
+      <ul *ngIf="!isLoading && controls.length" class="control-nav">
+        <li *ngFor="let control of controls">
+          <button
+            type="button"
+            class="control-nav-item"
+            [class.active]="selectedControlId === control.control_id"
+            (click)="selectControl(control.control_id)"
+          >
+            <span class="control-code">{{ control.control_id }}</span>
+            <span class="control-title">{{ control.name }}</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-legend">
+      <h2>Legende</h2>
+      <div class="legend-stack">
+        <div class="legend-row">
+          <span class="legend-dot control"></span>
+          <span>Control</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-dot verification"></span>
+          <span>Verifikation</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-dot validation"></span>
+          <span>Validierung</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="assessment-main">
+    <section class="assessment-workspace">
+      <header class="workspace-header">
+        <div>
+          <p class="workspace-kicker">Maturity Assessment</p>
+          <h2>
+            Control {{ selectedControlId ?? '—' }}
+            <span>{{ controlName }}</span>
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          class="metric-view-trigger"
+          (click)="goToMetricView()"
+        >
+          Metric View öffnen
+        </button>
+      </header>
+
+      <section class="metric-summary-card">
+        <div class="metric-control-pill">
+          <span class="metric-pill-icon">⌂</span>
+          <span>Control {{ selectedControlId ?? '—' }}</span>
+        </div>
+
+        <div class="metric-groups">
+          <button
+            type="button"
+            class="metric-group-card verification"
+            *ngIf="verificationMetrics.length"
+            (click)="selectMetric(verificationMetrics[0])"
+          >
+            <div class="metric-group-card-main">
+              <span class="metric-group-title">Verifikationsmetriken</span>
+              <span class="metric-group-subtitle">
+                {{ verificationMetrics.length }} Metriken
+              </span>
+            </div>
+            <span class="metric-group-count">{{ verificationMetrics.length }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="metric-group-card validation"
+            *ngIf="validationMetrics.length"
+            (click)="selectMetric(validationMetrics[0])"
+          >
+            <div class="metric-group-card-main">
+              <span class="metric-group-title">Validierungsmetriken</span>
+              <span class="metric-group-subtitle">
+                {{ validationMetrics.length }} Metriken
+              </span>
+            </div>
+            <span class="metric-group-count">{{ validationMetrics.length }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="question-panel" *ngIf="metricTree">
+        <div class="progress-rail">
+          <div
+            class="progress-step"
+            *ngFor="let step of progressSteps; let i = index"
+            [class.active]="i <= activeProgressIndex"
+            [class.current]="i === activeProgressIndex"
+          >
+            <span class="progress-dot"></span>
+            <span class="progress-label">
+              {{ i + 1 }}
+            </span>
+          </div>
+        </div>
+
+        <div class="question-copy">
+          <p class="question-kicker">
+            {{ selectedMetric?.id || selectedControlId || 'Assessment' }}
+          </p>
+
+          <h3>{{ selectedMetricQuestion }}</h3>
+
+          <p class="question-description">
+            {{ selectedMetricDescription }}
+          </p>
+        </div>
+      </section>
+
+      <section class="rating-grid" *ngIf="metricTree">
+        <button
+          *ngFor="let option of assessmentOptions"
+          type="button"
+          class="rating-card"
+          [class.selected]="selectedAssessment === option.value"
+          [class.level-0]="option.value === 0"
+          [class.level-1]="option.value === 1"
+          [class.level-2]="option.value === 2"
+          [class.level-3]="option.value === 3"
+          (click)="selectAssessment(option.value)"
+        >
+          <div class="rating-icon-ring">
+            <span class="rating-icon-core"></span>
+          </div>
+
+          <div class="rating-copy">
+            <h4>{{ option.label }}</h4>
+            <p>{{ option.description }}</p>
+          </div>
+
+          <div class="rating-index">
+            {{ option.value }}
+          </div>
+        </button>
+      </section>
+
+      <footer class="workspace-actions">
+        <button type="button" class="ghost-action">
+          Abbrechen
+        </button>
+
+        <div class="workspace-actions-right">
+          <button
+            type="button"
+            class="secondary-action"
+            (click)="saveAssessment()"
+          >
+            Speichern
+          </button>
+          <button
+            type="button"
+            class="primary-action"
+            (click)="goToNextControl()"
+          >
+            Nächstes Control
+          </button>
+        </div>
+      </footer>
+    </section>
+
+    <aside class="assessment-sidepanel">
+      <section class="info-card mil-card">
+        <div class="info-card-head">
+          <h3>Maturity Level</h3>
+          <span class="info-badge">{{ currentMilLabel }}</span>
+        </div>
+
+        <div class="mil-scale">
+          <div
+            class="mil-node"
+            *ngFor="let option of assessmentOptions"
+            [class.active]="selectedAssessment === option.value"
+          >
+            <span class="mil-node-index">{{ option.value }}</span>
+            <span class="mil-node-label">{{ option.shortLabel }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="info-card">
+        <div class="info-card-head">
+          <h3>Bewertungshinweis</h3>
+        </div>
+        <p>
+          Wählen Sie den Reifegrad, der den aktuellen Implementierungsstand dieses
+          Controls in Ihrer Organisation am besten widerspiegelt.
+        </p>
+      </section>
+
+      <section class="info-card">
+        <div class="info-card-head">
+          <h3>Notizen</h3>
+          <span class="optional-label">optional</span>
+        </div>
+
+        <textarea
+          class="notes-field"
+          rows="10"
+          maxlength="1000"
+          [value]="notes"
+          (input)="updateNotes(($any($event.target).value))"
+          placeholder="Hier können Begründungen, Beobachtungen oder Verweise auf Evidenzen dokumentiert werden ..."
+        ></textarea>
+
+        <div class="notes-meta">
+          <span>{{ notesLength }}/1000</span>
+        </div>
+      </section>
+
+      <section class="info-card metrics-card" *ngIf="selectedMetric">
+        <div class="info-card-head">
+          <h3>Ausgewählte Metrik</h3>
+          <span class="metric-score">{{ formatScore(selectedMetric.score) }}</span>
+        </div>
+
+        <div class="selected-metric-block">
+          <p class="selected-metric-name">{{ selectedMetric.name }}</p>
+          <p class="selected-metric-type">
+            {{
+              selectedMetric.groupType === 'verification'
+                ? 'Verifikation'
+                : 'Validierung'
+            }}
+          </p>
+        </div>
+      </section>
+    </aside>
+  </main>
+</div>

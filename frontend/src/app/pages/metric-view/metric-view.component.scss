@@ -24,7 +24,51 @@
 }
 
 .metric-view-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 0.55rem;
+}
+
+.metric-view-header-copy {
+  min-width: 0;
+}
+
+.maturity-evaluator-button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0.8rem 1.05rem;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.9), rgba(29, 78, 216, 0.9));
+  color: #eff6ff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.maturity-evaluator-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(147, 197, 253, 0.55);
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.28);
+}
+
+.maturity-evaluator-button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 900px) {
+  .metric-view-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .maturity-evaluator-button {
+    width: 100%;
+  }
 }
 
 .layer-label {

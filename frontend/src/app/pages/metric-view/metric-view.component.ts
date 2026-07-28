@@ -10,8 +10,9 @@ import {
   inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MetricViewService } from './services/metric-view.service';
-import { ControlListItem, MetricTreeNode } from './models/metric.models';
+import { Router } from '@angular/router';
+import { MetricViewService } from '../../services/metric-view.service';
+import { ControlListItem, MetricTreeNode } from '../../models/metric.models';
 
 interface CanvasMetricItem {
   id: string;
@@ -53,14 +54,15 @@ interface ConnectorModel {
 }
 
 @Component({
-  selector: 'app-root',
+  selector: 'app-metric-view',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './app.html',
-  styleUrl: './app.scss'
+  templateUrl: './metric-view.component.html',
+  styleUrl: './metric-view.component.scss'
 })
-export class AppComponent implements OnInit, AfterViewInit {
+export class MetricViewComponent implements OnInit, AfterViewInit {
   private metricViewService = inject(MetricViewService);
+  private router = inject(Router);
 
   @ViewChild('canvasScene') canvasSceneRef?: ElementRef<HTMLElement>;
   @ViewChild('centerNode') centerNodeRef?: ElementRef<HTMLElement>;
@@ -150,6 +152,10 @@ export class AppComponent implements OnInit, AfterViewInit {
   @HostListener('window:resize')
   onWindowResize(): void {
     this.updateConnectors();
+  }
+
+  goToMaturityEvaluator(): void {
+    this.router.navigate(['/maturity-assessment']);
   }
 
   loadControls(): void {
@@ -499,19 +505,20 @@ export class AppComponent implements OnInit, AfterViewInit {
 
     return code.replace(/_/g, ' ');
   }
+
   resetCanvasView(): void {
-  this.panelVisibility = {
-    profile: true,
-    evidence: true,
-    verification: true,
-    validation: true
-  };
+    this.panelVisibility = {
+      profile: true,
+      evidence: true,
+      verification: true,
+      validation: true
+    };
 
-  this.evidenceOpenSection = 'info';
-  this.expandedMetricIds.clear();
+    this.evidenceOpenSection = 'info';
+    this.expandedMetricIds.clear();
 
-  this.selectedMetric = this.canvasGroups.flatMap((group) => group.metrics)[0] ?? null;
+    this.selectedMetric = this.canvasGroups.flatMap((group) => group.metrics)[0] ?? null;
 
-  setTimeout(() => this.updateConnectors());
-}
+    setTimeout(() => this.updateConnectors());
+  }
 }
