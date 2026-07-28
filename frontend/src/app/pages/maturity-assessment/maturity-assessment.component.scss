@@ -343,9 +343,208 @@
   color: #f8fafc;
 }
 
+.metric-group-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.metric-group-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.metric-group-toggle {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.metric-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.25rem 0 0;
+}
+
+.metric-list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.metric-list-item:hover {
+  border-color: rgba(96, 165, 250, 0.3);
+  background: rgba(30, 41, 59, 0.92);
+}
+
+.metric-list-item.active {
+  border-color: rgba(96, 165, 250, 0.7);
+  background: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.metric-list-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.metric-list-item-score {
+  flex-shrink: 0;
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.progress-step {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.progress-step:hover .progress-dot {
+  transform: scale(1.08);
+  border-color: rgba(147, 197, 253, 0.8);
+}
+
+.progress-dot {
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
 .metric-group-subtitle {
   font-size: 0.8rem;
   color: #94a3b8;
+}
+.metric-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding: 1.25rem 1.35rem;
+}
+
+.metric-detail-kicker {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #b6c2d9;
+}
+
+.metric-detail-card-titleblock h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.35;
+  color: #f8fafc;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.metric-detail-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.metric-detail-card-titleblock {
+  min-width: 0;
+}
+
+.metric-detail-back {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.78);
+  color: #e2e8f0;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.metric-detail-back:hover {
+  transform: translateX(-2px);
+  background: rgba(51, 65, 85, 0.92);
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.metric-detail-back:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.7);
+  outline-offset: 2px;
+}
+
+.metric-detail-back:active {
+  transform: translateX(-1px) scale(0.98);
+}
+
+.metric-detail-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.metric-detail-score,
+.metric-detail-id {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(42, 56, 92, 0.6);
+  border: 1px solid rgba(163, 184, 255, 0.22);
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.metric-detail-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.metric-detail-section {
+  padding: 1.1rem 1.15rem;
+  border-radius: 16px;
+  background: rgba(29, 37, 68, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.metric-detail-section h4 {
+  margin: 0 0 0.55rem 0;
+  font-size: 0.98rem;
+  color: #f8fafc;
+}
+
+.metric-detail-section p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #e5edf9;
 }
 
 .metric-group-count {

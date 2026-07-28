@@ -38,10 +38,12 @@
           <span class="legend-dot control"></span>
           <span>Control</span>
         </div>
+
         <div class="legend-row">
           <span class="legend-dot verification"></span>
           <span>Verifikation</span>
         </div>
+
         <div class="legend-row">
           <span class="legend-dot validation"></span>
           <span>Validierung</span>
@@ -70,58 +72,183 @@
         </button>
       </header>
 
-      <section class="metric-summary-card">
+      <section class="metric-summary-card" *ngIf="!metricDetailOpen">
         <div class="metric-control-pill">
           <span class="metric-pill-icon">⌂</span>
           <span>Control {{ selectedControlId ?? '—' }}</span>
         </div>
 
         <div class="metric-groups">
-          <button
-            type="button"
-            class="metric-group-card verification"
-            *ngIf="verificationMetrics.length"
-            (click)="selectMetric(verificationMetrics[0])"
-          >
-            <div class="metric-group-card-main">
-              <span class="metric-group-title">Verifikationsmetriken</span>
-              <span class="metric-group-subtitle">
-                {{ verificationMetrics.length }} Metriken
-              </span>
-            </div>
-            <span class="metric-group-count">{{ verificationMetrics.length }}</span>
-          </button>
+          <div class="metric-group-block" *ngIf="verificationMetrics.length">
+            <button
+              type="button"
+              class="metric-group-card verification"
+              [class.expanded]="isGroupExpanded('verification')"
+              (click)="toggleGroupMetrics('verification')"
+            >
+              <div class="metric-group-card-main">
+                <span class="metric-group-title">Verifikationsmetriken</span>
+                <span class="metric-group-subtitle">
+                  {{ verificationMetrics.length }} Metriken
+                </span>
+              </div>
 
-          <button
-            type="button"
-            class="metric-group-card validation"
-            *ngIf="validationMetrics.length"
-            (click)="selectMetric(validationMetrics[0])"
-          >
-            <div class="metric-group-card-main">
-              <span class="metric-group-title">Validierungsmetriken</span>
-              <span class="metric-group-subtitle">
-                {{ validationMetrics.length }} Metriken
-              </span>
+              <div class="metric-group-card-meta">
+                <span class="metric-group-count">{{ verificationMetrics.length }}</span>
+                <span class="metric-group-toggle">
+                  {{ isGroupExpanded('verification') ? '−' : '+' }}
+                </span>
+              </div>
+            </button>
+
+            <div class="metric-group-list" *ngIf="isGroupExpanded('verification')">
+              <button
+                *ngFor="let metric of verificationMetrics"
+                type="button"
+                class="metric-list-item"
+                [class.active]="selectedMetric?.id === metric.id"
+                (click)="openMetricDetail(metric)"
+              >
+                <span class="metric-list-item-name">{{ metric.name }}</span>
+                <span class="metric-list-item-score">{{ formatScore(metric.score) }}</span>
+              </button>
             </div>
-            <span class="metric-group-count">{{ validationMetrics.length }}</span>
-          </button>
+          </div>
+
+          <div class="metric-group-block" *ngIf="validationMetrics.length">
+            <button
+              type="button"
+              class="metric-group-card validation"
+              [class.expanded]="isGroupExpanded('validation')"
+              (click)="toggleGroupMetrics('validation')"
+            >
+              <div class="metric-group-card-main">
+                <span class="metric-group-title">Validierungsmetriken</span>
+                <span class="metric-group-subtitle">
+                  {{ validationMetrics.length }} Metriken
+                </span>
+              </div>
+
+              <div class="metric-group-card-meta">
+                <span class="metric-group-count">{{ validationMetrics.length }}</span>
+                <span class="metric-group-toggle">
+                  {{ isGroupExpanded('validation') ? '−' : '+' }}
+                </span>
+              </div>
+            </button>
+
+            <div class="metric-group-list" *ngIf="isGroupExpanded('validation')">
+              <button
+                *ngFor="let metric of validationMetrics"
+                type="button"
+                class="metric-list-item"
+                [class.active]="selectedMetric?.id === metric.id"
+                (click)="openMetricDetail(metric)"
+              >
+                <span class="metric-list-item-name">{{ metric.name }}</span>
+                <span class="metric-list-item-score">{{ formatScore(metric.score) }}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
+      <section
+  class="metric-summary-card metric-detail-card"
+  *ngIf="metricDetailOpen && selectedMetric"
+>
+  <div class="metric-detail-card-head">
+    <div class="metric-detail-card-titleblock">
+      <p class="metric-detail-kicker">
+        {{
+          selectedMetric.groupType === 'verification'
+            ? 'Verifikationsmetrik'
+            : 'Validierungsmetrik'
+        }}
+      </p>
+      <h3>{{ selectedMetric.name }}</h3>
+    </div>
+
+    <button
+      type="button"
+      class="metric-detail-back"
+      (click)="closeMetricDetail()"
+      aria-label="Zurück zu den Metriken"
+      title="Zurück zu den Metriken"
+    >
+      ←
+    </button>
+  </div>
+
+  <div class="metric-detail-card-meta">
+    <span class="metric-detail-score">
+      Score: {{ formatScore(selectedMetric.score) }}
+    </span>
+    <span class="metric-detail-id">{{ selectedMetric.id }}</span>
+  </div>
+
+  <div class="metric-detail-sections">
+    <div class="metric-detail-section">
+      <h4>Beschreibung</h4>
+      <p>{{ selectedMetricDescriptionText }}</p>
+    </div>
+
+    <div class="metric-detail-section">
+      <h4>Beispiels-Assets</h4>
+
+      <ng-container *ngIf="selectedEvidenceItems.length; else noEvidenceAssets">
+        <ul class="metric-evidence-list">
+          <li
+            *ngFor="let evidence of selectedEvidenceItems"
+            class="metric-evidence-item"
+          >
+            <span class="metric-evidence-asset">
+              {{ evidence.name || evidence.data?.['asset'] || 'Unbenanntes Asset' }}
+            </span>
+
+            <span
+              class="metric-evidence-type"
+              *ngIf="evidence.data?.['evidenz_art']"
+            >
+              {{ evidence.data?.['evidenz_art'] }}
+            </span>
+
+            <p
+              class="metric-evidence-description"
+              *ngIf="evidence.data?.['beschreibung']"
+            >
+              {{ evidence.data?.['beschreibung'] }}
+            </p>
+          </li>
+        </ul>
+      </ng-container>
+
+      <ng-template #noEvidenceAssets>
+        <p>Keine Beispiel-Assets vorhanden.</p>
+      </ng-template>
+    </div>
+
+    <div class="metric-detail-section">
+      <h4>Formel</h4>
+      <p>{{ selectedMetricFormulaText }}</p>
+    </div>
+  </div>
+</section>
+
       <section class="question-panel" *ngIf="metricTree">
         <div class="progress-rail">
-          <div
+          <button
+            type="button"
             class="progress-step"
             *ngFor="let step of progressSteps; let i = index"
             [class.active]="i <= activeProgressIndex"
             [class.current]="i === activeProgressIndex"
+            (click)="goToProgressStep(step)"
+            [attr.aria-label]="'Zu Metrik ' + (i + 1) + ' wechseln'"
           >
             <span class="progress-dot"></span>
-            <span class="progress-label">
-              {{ i + 1 }}
-            </span>
-          </div>
+            <span class="progress-label">{{ i + 1 }}</span>
+          </button>
         </div>
 
         <div class="question-copy">
@@ -129,10 +256,10 @@
             {{ selectedMetric?.id || selectedControlId || 'Assessment' }}
           </p>
 
-          <h3>{{ selectedMetricQuestion }}</h3>
+          <h3>{{ selectedMetric?.name || controlName }}</h3>
 
           <p class="question-description">
-            {{ selectedMetricDescription }}
+            {{ selectedMetric ? selectedMetricDescriptionText : controlDescription }}
           </p>
         </div>
       </section>

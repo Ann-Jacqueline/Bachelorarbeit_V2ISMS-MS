@@ -5,6 +5,7 @@ import { MetricViewService } from '../../services/metric-view.service';
 import { ControlListItem, MetricTreeNode } from '../../models/metric.models';
 
 type AssessmentLevel = 0 | 1 | 2 | 3;
+type MetricGroupType = 'verification' | 'validation';
 
 interface AssessmentOption {
   value: AssessmentLevel;
@@ -21,13 +22,13 @@ interface CanvasMetricItem {
   details: MetricTreeNode | null;
   evidencesNode: MetricTreeNode | null;
   rawNode: MetricTreeNode;
-  groupType: 'verification' | 'validation';
+  groupType: MetricGroupType;
 }
 
 interface CanvasGroup {
   id: string;
   title: string;
-  type: 'verification' | 'validation';
+  type: MetricGroupType;
   count: number;
   metrics: CanvasMetricItem[];
 }
@@ -52,6 +53,12 @@ export class MaturityAssessmentComponent implements OnInit {
 
   canvasGroups: CanvasGroup[] = [];
   selectedMetric: CanvasMetricItem | null = null;
+  metricDetailOpen = false;
+
+  expandedGroups: Record<MetricGroupType, boolean> = {
+    verification: false,
+    validation: false
+  };
 
   assessmentOptions: AssessmentOption[] = [
     {
@@ -91,8 +98,6 @@ export class MaturityAssessmentComponent implements OnInit {
     this.loadControls();
   }
 
-  // Daten laden
-
   loadControls(): void {
     this.isLoading = true;
     this.errorMessage = null;
@@ -123,11 +128,21 @@ export class MaturityAssessmentComponent implements OnInit {
     this.selectedMetric = null;
     this.selectedAssessment = 2;
     this.notes = '';
+    this.metricDetailOpen = false;
+    this.expandedGroups = {
+      verification: false,
+      validation: false
+    };
 
     this.metricViewService.getMetricViewForControl(controlId).subscribe({
       next: (response) => {
         this.metricTree = response.data;
         this.buildCanvasViewModel();
+
+        if (this.selectedMetric) {
+          this.expandedGroups[this.selectedMetric.groupType] = true;
+        }
+
         this.isLoading = false;
       },
       error: () => {
@@ -135,12 +150,21 @@ export class MaturityAssessmentComponent implements OnInit {
         this.metricTree = null;
         this.canvasGroups = [];
         this.selectedMetric = null;
+        this.metricDetailOpen = false;
         this.isLoading = false;
       }
     });
   }
 
-  // Interaktionen
+  openMetricDetail(metric: CanvasMetricItem): void {
+    this.selectedMetric = metric;
+    this.expandedGroups[metric.groupType] = true;
+    this.metricDetailOpen = true;
+  }
+
+  closeMetricDetail(): void {
+    this.metricDetailOpen = false;
+  }
 
   selectControl(controlId: string): void {
     if (this.selectedControlId === controlId) {
@@ -153,6 +177,26 @@ export class MaturityAssessmentComponent implements OnInit {
 
   selectMetric(metric: CanvasMetricItem): void {
     this.selectedMetric = metric;
+    this.expandedGroups[metric.groupType] = true;
+    this.metricDetailOpen = true;
+  }
+
+  toggleGroupMetrics(groupType: MetricGroupType): void {
+    const nextState = !this.expandedGroups[groupType];
+    this.expandedGroups[groupType] = nextState;
+
+    if (nextState) {
+      const firstMetric =
+        this.canvasGroups.find((group) => group.type === groupType)?.metrics[0] ?? null;
+
+      if (firstMetric) {
+        this.selectedMetric = firstMetric;
+      }
+    }
+  }
+
+  isGroupExpanded(groupType: MetricGroupType): boolean {
+    return this.expandedGroups[groupType];
   }
 
   selectAssessment(level: AssessmentLevel): void {
@@ -192,16 +236,20 @@ export class MaturityAssessmentComponent implements OnInit {
     }
   }
 
-  // Routing zurück zur Metric View
-
   goToMetricView(): void {
-    // falls deine Metric View auf '' hängt:
     this.router.navigate(['/']);
-    // falls du einen expliziten Pfad hast, z.B. 'metric-view':
-    // this.router.navigate(['/metric-view']);
   }
 
-  // View-Model für Metriken
+  goToProgressStep(stepId: string): void {
+    const metric = this.allMetrics.find((item) => item.id === stepId);
+    if (!metric) {
+      return;
+    }
+
+    this.selectedMetric = metric;
+    this.expandedGroups[metric.groupType] = true;
+    this.metricDetailOpen = true;
+  }
 
   private buildCanvasViewModel(): void {
     if (!this.metricTree?.children) {
@@ -213,7 +261,7 @@ export class MaturityAssessmentComponent implements OnInit {
     this.canvasGroups = this.metricTree.children
       .filter((child) => child.node_type === 'metric_group')
       .map((groupNode) => {
-        const groupType: 'verification' | 'validation' =
+        const groupType: MetricGroupType =
           groupNode.id.includes('verification') ? 'verification' : 'validation';
 
         const metrics = (groupNode.children ?? [])
@@ -234,7 +282,7 @@ export class MaturityAssessmentComponent implements OnInit {
 
   private mapMetricNode(
     metricNode: MetricTreeNode,
-    groupType: 'verification' | 'validation'
+    groupType: MetricGroupType
   ): CanvasMetricItem {
     const scoreNode =
       metricNode.children?.find((child) => child.node_type === 'score') ?? null;
@@ -249,8 +297,8 @@ export class MaturityAssessmentComponent implements OnInit {
       typeof scoreNode?.data?.['total_score'] === 'number'
         ? scoreNode.data['total_score']
         : typeof metricNode.data?.['total_score'] === 'number'
-        ? metricNode.data['total_score']
-        : null;
+          ? metricNode.data['total_score']
+          : null;
 
     return {
       id: metricNode.id,
@@ -262,8 +310,6 @@ export class MaturityAssessmentComponent implements OnInit {
       groupType
     };
   }
-
-  // abgeleitete Properties für das Template
 
   formatScore(score: number | null): string {
     if (score === null || Number.isNaN(score)) {
@@ -281,50 +327,61 @@ export class MaturityAssessmentComponent implements OnInit {
     return this.metricTree?.data?.['beschreibung'] ?? '';
   }
 
-  get selectedMetricQuestion(): string {
+  get selectedEvidenceItems(): MetricTreeNode[] {
+    return this.selectedMetric?.evidencesNode?.children ?? [];
+  }
+
+  get selectedMetricDescriptionText(): string {
     return (
-      this.selectedMetric?.details?.data?.['frage'] ??
-      this.selectedMetric?.rawNode?.data?.['frage'] ??
-      `In welchem Ausmaß ist ${this.controlName} in Ihrer Organisation umgesetzt?`
+      this.selectedMetric?.details?.data?.['beschreibung'] ||
+      this.selectedMetric?.rawNode.data?.['beschreibung'] ||
+      this.controlDescription ||
+      'Keine Beschreibung vorhanden.'
     );
   }
 
-  get selectedMetricDescription(): string {
+  get selectedMetricEvidenceText(): string {
     return (
-      this.selectedMetric?.details?.data?.['beschreibung'] ??
-      this.selectedMetric?.rawNode?.data?.['beschreibung'] ??
-      this.controlDescription
+      this.selectedMetric?.evidencesNode?.name ||
+      this.selectedMetric?.details?.data?.['evidenzen'] ||
+      this.selectedMetric?.rawNode.data?.['evidenzen'] ||
+      'Keine Evidenzen vorhanden.'
+    );
+  }
+
+  get selectedMetricFormulaText(): string {
+    return (
+      this.selectedMetric?.details?.data?.['formel'] ||
+      this.selectedMetric?.rawNode.data?.['formel'] ||
+      'Keine Formel vorhanden.'
     );
   }
 
   get verificationMetrics(): CanvasMetricItem[] {
-    return (
-      this.canvasGroups.find((group) => group.type === 'verification')?.metrics ?? []
-    );
+    return this.canvasGroups.find((group) => group.type === 'verification')?.metrics ?? [];
   }
 
   get validationMetrics(): CanvasMetricItem[] {
-    return (
-      this.canvasGroups.find((group) => group.type === 'validation')?.metrics ?? []
-    );
+    return this.canvasGroups.find((group) => group.type === 'validation')?.metrics ?? [];
+  }
+
+  get allMetrics(): CanvasMetricItem[] {
+    return [...this.verificationMetrics, ...this.validationMetrics];
   }
 
   get progressSteps(): string[] {
-    const verification = this.verificationMetrics;
-    const validation = this.validationMetrics;
-    const metricIds = [...verification, ...validation].map((metric) => metric.id);
-
+    const metricIds = this.allMetrics.map((metric) => metric.id);
     return metricIds.length ? metricIds : [this.selectedControlId ?? 'control'];
   }
 
   get activeProgressIndex(): number {
-    if (!this.selectedMetric) {
+    const selectedMetric = this.selectedMetric;
+
+    if (!selectedMetric) {
       return 0;
     }
 
-    const index = this.progressSteps.findIndex(
-      (step) => step === this.selectedMetric?.id
-    );
+    const index = this.progressSteps.findIndex((step) => step === selectedMetric.id);
     return index >= 0 ? index : 0;
   }
 
