@@ -42,9 +42,12 @@ def get_all_ratings_for_session(conn, session_id):
             control_id,
             domain,
             mil_level,
-            note
+            note,
+            created_at,
+            updated_at
         from control_maturity_rating
         where session_id = ?
+        order by domain asc, control_id asc
         """,
         (session_id,)
     ).fetchall()

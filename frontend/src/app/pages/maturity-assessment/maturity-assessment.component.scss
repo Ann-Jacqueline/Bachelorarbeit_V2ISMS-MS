@@ -250,11 +250,13 @@
   color: #e2e8f0;
   cursor: pointer;
   white-space: nowrap;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
 .metric-view-trigger:hover {
   border-color: rgba(96, 165, 250, 0.36);
   background: rgba(30, 41, 59, 0.92);
+  transform: translateY(-1px);
 }
 
 .metric-summary-card,
@@ -304,6 +306,12 @@
   gap: 0.85rem;
 }
 
+.metric-group-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .metric-group-card {
   padding: 0.95rem 1rem;
   border-radius: 18px;
@@ -316,6 +324,7 @@
   gap: 0.9rem;
   cursor: pointer;
   text-align: left;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .metric-group-card:hover {
@@ -328,6 +337,16 @@
 
 .metric-group-card.validation {
   border-color: rgba(192, 132, 252, 0.24);
+}
+
+.metric-group-card.expanded.verification {
+  background: rgba(18, 49, 53, 0.74);
+  border-color: rgba(94, 234, 212, 0.4);
+}
+
+.metric-group-card.expanded.validation {
+  background: rgba(51, 32, 78, 0.72);
+  border-color: rgba(216, 180, 254, 0.42);
 }
 
 .metric-group-card-main {
@@ -343,10 +362,9 @@
   color: #f8fafc;
 }
 
-.metric-group-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.metric-group-subtitle {
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
 .metric-group-card-meta {
@@ -354,6 +372,27 @@
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+}
+
+.metric-group-count {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.metric-group-card.verification .metric-group-count {
+  background: rgba(45, 212, 191, 0.15);
+  color: #99f6e4;
+}
+
+.metric-group-card.validation .metric-group-count {
+  background: rgba(192, 132, 252, 0.15);
+  color: #e9d5ff;
 }
 
 .metric-group-toggle {
@@ -414,27 +453,6 @@
   font-weight: 700;
 }
 
-.progress-step {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-}
-
-.progress-step:hover .progress-dot {
-  transform: scale(1.08);
-  border-color: rgba(147, 197, 253, 0.8);
-}
-
-.progress-dot {
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-}
-
-.metric-group-subtitle {
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
 .metric-detail-card {
   display: flex;
   flex-direction: column;
@@ -448,6 +466,10 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #b6c2d9;
+}
+
+.metric-detail-card-titleblock {
+  min-width: 0;
 }
 
 .metric-detail-card-titleblock h3 {
@@ -464,10 +486,6 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.metric-detail-card-titleblock {
-  min-width: 0;
 }
 
 .metric-detail-back {
@@ -547,25 +565,46 @@
   color: #e5edf9;
 }
 
-.metric-group-count {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  font-size: 0.9rem;
+.metric-evidence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.metric-evidence-item {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.metric-evidence-asset {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #f8fafc;
   font-weight: 700;
 }
 
-.metric-group-card.verification .metric-group-count {
-  background: rgba(45, 212, 191, 0.15);
-  color: #99f6e4;
+.metric-evidence-type {
+  display: inline-flex;
+  margin-bottom: 0.55rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  color: #bfdbfe;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.metric-group-card.validation .metric-group-count {
-  background: rgba(192, 132, 252, 0.15);
-  color: #e9d5ff;
+.metric-evidence-description {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
 .question-panel {
@@ -581,11 +620,16 @@
 }
 
 .progress-step {
+  appearance: none;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.45rem;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .progress-step::before {
@@ -602,6 +646,11 @@
   display: none;
 }
 
+.progress-step:hover .progress-dot {
+  transform: scale(1.08);
+  border-color: rgba(147, 197, 253, 0.8);
+}
+
 .progress-dot {
   width: 24px;
   height: 24px;
@@ -609,6 +658,7 @@
   border: 2px solid rgba(148, 163, 184, 0.38);
   background: #1e293b;
   z-index: 1;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .progress-label {
@@ -785,13 +835,23 @@
 .workspace-actions {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 1rem;
   margin-top: 1rem;
 }
 
 .workspace-actions-right {
   display: flex;
+  align-items: center;
   gap: 0.8rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.save-hint {
+  font-size: 0.84rem;
+  color: #93c5fd;
+  white-space: nowrap;
 }
 
 .ghost-action,
@@ -802,6 +862,13 @@
   border-radius: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+}
+
+.ghost-action:hover,
+.secondary-action:hover,
+.primary-action:hover {
+  transform: translateY(-1px);
 }
 
 .ghost-action {
@@ -820,6 +887,29 @@
   border: 1px solid rgba(96, 165, 250, 0.4);
   background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
   color: #eff6ff;
+}
+
+.ghost-action:hover {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(30, 41, 59, 0.82);
+}
+
+.secondary-action:hover {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(30, 41, 59, 0.96);
+}
+
+.primary-action:hover {
+  border-color: rgba(147, 197, 253, 0.56);
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.ghost-action:disabled,
+.secondary-action:disabled,
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .assessment-sidepanel {
@@ -968,7 +1058,7 @@
   }
 
   .metrics-card {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 }
 
@@ -996,11 +1086,11 @@
 
   .workspace-actions {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .workspace-actions-right {
     justify-content: stretch;
-    flex-wrap: wrap;
   }
 
   .workspace-actions-right > button,
@@ -1039,5 +1129,10 @@
 
   .mil-scale {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-detail-card-head,
+  .metric-detail-card-meta {
+    align-items: stretch;
   }
 }

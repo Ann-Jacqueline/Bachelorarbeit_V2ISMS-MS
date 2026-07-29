@@ -23,7 +23,8 @@ def home():
             "/api/maturity/session/<session_id>/controls/<control_id>",
             "/api/maturity/session/<session_id>/controls/<control_id>/rating",
             "/api/maturity/session/<session_id>/summary",
-            "/api/maturity/session/<session_id>/complete"
+            "/api/maturity/session/<session_id>/complete",
+            "/api/maturity/session/<session_id>/submit"
         ]
     }, 200
 
@@ -211,6 +212,37 @@ def complete_maturity_session(session_id):
         return jsonify({
             "status": "error",
             "message": "Interner Fehler beim Abschließen der Maturity-Session.",
+            "data": None
+        }), 500
+
+    finally:
+        conn.close()
+
+@app.post("/api/maturity/session/<session_id>/submit")
+def submit_maturity_session(session_id):
+    conn = create_connection()
+
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        maturity_service = MaturityService(conn)
+        response = maturity_service.submit_session_response(
+            session_id=session_id,
+            payload=payload
+        )
+
+        if response["status"] == "success":
+            return jsonify(response), 200
+
+        if response["status"] == "not_found":
+            return jsonify(response), 404
+
+        return jsonify(response), 400
+
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Interner Fehler beim Abschließen des Assessments.",
             "data": None
         }), 500
 

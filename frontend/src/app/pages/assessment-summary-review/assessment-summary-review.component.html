@@ -1,0 +1,131 @@
+<div class="summary-shell">
+  <header class="summary-header">
+    <div>
+      <p class="summary-kicker">Assessment Summary</p>
+      <h1>Review der Ergebnisse</h1>
+      <p class="summary-subtitle">
+        Die Maturity-Bewertung wurde abgeschlossen und serverseitig zusammengefasst.
+      </p>
+    </div>
+
+    <div class="summary-header-actions">
+      <button
+        type="button"
+        class="secondary-action"
+        (click)="goToMetricView()"
+      >
+        Zur Metric View
+      </button>
+
+      <button
+        type="button"
+        class="primary-action"
+        (click)="startNewAssessment()"
+      >
+        Neues Assessment starten
+      </button>
+    </div>
+  </header>
+
+  <section class="summary-state-card" *ngIf="isLoading">
+    <p>Lade Zusammenfassung ...</p>
+  </section>
+
+  <section class="summary-state-card error" *ngIf="!isLoading && errorMessage">
+    <p>{{ errorMessage }}</p>
+  </section>
+
+  <ng-container *ngIf="!isLoading && !errorMessage && summary">
+    <section class="summary-grid hero-grid">
+      <article class="summary-card session-card">
+        <p class="card-kicker">Session</p>
+        <h2>{{ summary.session_id }}</h2>
+        <div class="session-meta">
+          <span class="status-badge">{{ sessionStatusLabel }}</span>
+          <span *ngIf="summary.updated_at">
+            Aktualisiert: {{ formatDate(summary.updated_at) }}
+          </span>
+        </div>
+      </article>
+
+      <article class="summary-card stat-card">
+        <p class="card-kicker">Durchschnitt</p>
+        <h2>{{ averageMilLevel }}</h2>
+        <p>Durchschnittlicher Reifegrad über alle bewerteten Controls.</p>
+      </article>
+
+      <article class="summary-card stat-card">
+        <p class="card-kicker">Reifegrad</p>
+        <h2>{{ overallPercentage }}</h2>
+        <p>Relativer Anteil der erreichten Punkte bezogen auf das Maximum.</p>
+      </article>
+
+      <article class="summary-card stat-card">
+        <p class="card-kicker">Bewertet</p>
+        <h2>{{ totalRatedControls }}</h2>
+        <p>Controls mit gespeicherter Bewertung in dieser Session.</p>
+      </article>
+
+      <article class="summary-card stat-card">
+        <p class="card-kicker">Nicht bewertet</p>
+        <h2>{{ totalUnratedControls }}</h2>
+        <p>Controls ohne finale Bewertung in dieser Session.</p>
+      </article>
+
+      <article class="summary-card stat-card">
+        <p class="card-kicker">Punktestand</p>
+        <h2>{{ achievedPointsDisplay }}</h2>
+        <p>Erreichte Punkte im Verhältnis zur maximalen Punktzahl.</p>
+      </article>
+    </section>
+
+    <section class="summary-card section-card">
+      <div class="section-head">
+        <div>
+          <p class="card-kicker">Domänenübersicht</p>
+          <h2>{{ totalDomains }} Domänen ausgewertet</h2>
+        </div>
+      </div>
+
+      <div class="domain-list" *ngIf="domains.length; else noDomains">
+        <article class="domain-card" *ngFor="let domain of domains; trackBy: trackByDomain">
+          <div class="domain-card-head">
+            <div>
+              <h3>{{ domain.domain }}</h3>
+              <p>{{ domain.rated_controls }} bewertete Controls</p>
+            </div>
+
+            <span class="domain-badge">
+              {{ formatAverage(domain.avg_mil_level) }}
+            </span>
+          </div>
+
+          <div class="domain-stats">
+            <span>{{ formatPercentage(domain.percentage) }}</span>
+            <span>{{ domain.achieved_points }} / {{ domain.max_points }} Punkte</span>
+          </div>
+
+          <div class="domain-progress">
+            <div
+              class="domain-progress-bar"
+              [style.width]="domain.percentage !== null ? domain.percentage + '%' : '0%'"
+            ></div>
+          </div>
+
+          <div class="domain-controls" *ngIf="domain.controls.length">
+            <div class="domain-control-row" *ngFor="let control of domain.controls">
+              <span class="control-id">{{ control.control_id }}</span>
+              <span class="control-mil">
+                {{ control.mil_label || formatMil(control.mil_level) }}
+              </span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #noDomains>
+        <p>Keine Domänendaten vorhanden.</p>
+      </ng-template>
+    </section>
+  </ng-container>
+</div>

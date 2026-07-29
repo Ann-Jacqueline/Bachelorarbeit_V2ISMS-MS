@@ -16,6 +16,13 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'assessment-summary',
+    loadComponent: () =>
+      import('./pages/assessment-summary-review/assessment-summary-review.component').then(
+        (m) => m.AssessmentSummaryReviewComponent
+      )
+  },
+  {
     path: '**',
     redirectTo: ''
   }

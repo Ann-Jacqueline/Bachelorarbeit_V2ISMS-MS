@@ -154,86 +154,86 @@
       </section>
 
       <section
-  class="metric-summary-card metric-detail-card"
-  *ngIf="metricDetailOpen && selectedMetric"
->
-  <div class="metric-detail-card-head">
-    <div class="metric-detail-card-titleblock">
-      <p class="metric-detail-kicker">
-        {{
-          selectedMetric.groupType === 'verification'
-            ? 'Verifikationsmetrik'
-            : 'Validierungsmetrik'
-        }}
-      </p>
-      <h3>{{ selectedMetric.name }}</h3>
-    </div>
-
-    <button
-      type="button"
-      class="metric-detail-back"
-      (click)="closeMetricDetail()"
-      aria-label="Zurück zu den Metriken"
-      title="Zurück zu den Metriken"
-    >
-      ←
-    </button>
-  </div>
-
-  <div class="metric-detail-card-meta">
-    <span class="metric-detail-score">
-      Score: {{ formatScore(selectedMetric.score) }}
-    </span>
-    <span class="metric-detail-id">{{ selectedMetric.id }}</span>
-  </div>
-
-  <div class="metric-detail-sections">
-    <div class="metric-detail-section">
-      <h4>Beschreibung</h4>
-      <p>{{ selectedMetricDescriptionText }}</p>
-    </div>
-
-    <div class="metric-detail-section">
-      <h4>Beispiels-Assets</h4>
-
-      <ng-container *ngIf="selectedEvidenceItems.length; else noEvidenceAssets">
-        <ul class="metric-evidence-list">
-          <li
-            *ngFor="let evidence of selectedEvidenceItems"
-            class="metric-evidence-item"
-          >
-            <span class="metric-evidence-asset">
-              {{ evidence.name || evidence.data?.['asset'] || 'Unbenanntes Asset' }}
-            </span>
-
-            <span
-              class="metric-evidence-type"
-              *ngIf="evidence.data?.['evidenz_art']"
-            >
-              {{ evidence.data?.['evidenz_art'] }}
-            </span>
-
-            <p
-              class="metric-evidence-description"
-              *ngIf="evidence.data?.['beschreibung']"
-            >
-              {{ evidence.data?.['beschreibung'] }}
+        class="metric-summary-card metric-detail-card"
+        *ngIf="metricDetailOpen && selectedMetric"
+      >
+        <div class="metric-detail-card-head">
+          <div class="metric-detail-card-titleblock">
+            <p class="metric-detail-kicker">
+              {{
+                selectedMetric.groupType === 'verification'
+                  ? 'Verifikationsmetrik'
+                  : 'Validierungsmetrik'
+              }}
             </p>
-          </li>
-        </ul>
-      </ng-container>
+            <h3>{{ selectedMetric.name }}</h3>
+          </div>
 
-      <ng-template #noEvidenceAssets>
-        <p>Keine Beispiel-Assets vorhanden.</p>
-      </ng-template>
-    </div>
+          <button
+            type="button"
+            class="metric-detail-back"
+            (click)="closeMetricDetail()"
+            aria-label="Zurück zu den Metriken"
+            title="Zurück zu den Metriken"
+          >
+            ←
+          </button>
+        </div>
 
-    <div class="metric-detail-section">
-      <h4>Formel</h4>
-      <p>{{ selectedMetricFormulaText }}</p>
-    </div>
-  </div>
-</section>
+        <div class="metric-detail-card-meta">
+          <span class="metric-detail-score">
+            Score: {{ formatScore(selectedMetric.score) }}
+          </span>
+          <span class="metric-detail-id">{{ selectedMetric.id }}</span>
+        </div>
+
+        <div class="metric-detail-sections">
+          <div class="metric-detail-section">
+            <h4>Beschreibung</h4>
+            <p>{{ selectedMetricDescriptionText }}</p>
+          </div>
+
+          <div class="metric-detail-section">
+            <h4>Beispiels-Assets</h4>
+
+           <ng-container *ngIf="selectedEvidenceItems.length; else noEvidenceAssets">
+          <ul class="metric-evidence-list">
+            <li
+              *ngFor="let evidence of selectedEvidenceItems"
+              class="metric-evidence-item"
+            >
+              <span class="metric-evidence-asset">
+                {{ evidence.name || evidence.data['asset'] || 'Unbenanntes Asset' }}
+              </span>
+
+              <span
+                class="metric-evidence-type"
+                *ngIf="evidence.data['evidenz_art']"
+              >
+                {{ evidence.data['evidenz_art'] }}
+              </span>
+
+              <p
+                class="metric-evidence-description"
+                *ngIf="evidence.data['beschreibung']"
+              >
+                {{ evidence.data['beschreibung'] }}
+              </p>
+            </li>
+          </ul>
+        </ng-container>
+
+            <ng-template #noEvidenceAssets>
+              <p>Keine Beispiel-Assets vorhanden.</p>
+            </ng-template>
+          </div>
+
+          <div class="metric-detail-section">
+            <h4>Formel</h4>
+            <p>{{ selectedMetricFormulaText }}</p>
+          </div>
+        </div>
+      </section>
 
       <section class="question-panel" *ngIf="metricTree">
         <div class="progress-rail">
@@ -264,7 +264,7 @@
         </div>
       </section>
 
-      <section class="rating-grid" *ngIf="metricTree">
+      <section class="rating-grid" *ngIf="metricTree && selectedMetric">
         <button
           *ngFor="let option of assessmentOptions"
           type="button"
@@ -291,8 +291,37 @@
         </button>
       </section>
 
-      <footer class="workspace-actions">
-        <button type="button" class="ghost-action">
+      <section
+        class="submit-warning-card"
+        *ngIf="metricTree && selectedMetric && isLastControl"
+      >
+        <div class="submit-warning-head">
+          <h3>Assessment abschließen</h3>
+          <span class="submit-warning-badge">
+            {{ totalMissingMetricCount }} offen
+          </span>
+        </div>
+
+        <p>
+          Mit dem finalen Absenden wird das Assessment abgeschlossen und kann danach
+          nicht mehr verändert werden.
+        </p>
+
+        <p *ngIf="totalMissingMetricCount > 0">
+          Noch nicht beantwortete Metriken im aktuellen Control werden automatisch mit 0 bewertet.
+        </p>
+
+        <p *ngIf="totalMissingMetricCount === 0">
+          Alle Metriken im aktuellen Control sind beantwortet und bereit zur Übermittlung.
+        </p>
+      </section>
+
+      <footer class="workspace-actions" *ngIf="metricTree && selectedMetric">
+        <button
+          type="button"
+          class="ghost-action"
+          (click)="cancelAssessmentChanges()"
+        >
           Abbrechen
         </button>
 
@@ -301,15 +330,33 @@
             type="button"
             class="secondary-action"
             (click)="saveAssessment()"
+            [disabled]="isSaving || isSubmitting"
           >
-            Speichern
+            {{ isSaving ? 'Speichert ...' : 'Lokal speichern' }}
           </button>
+
+          <div class="save-hint" *ngIf="saveMessage && !isSubmitting">
+            {{ saveMessage }}
+          </div>
+
           <button
+            *ngIf="!isLastControl"
             type="button"
             class="primary-action"
             (click)="goToNextControl()"
+            [disabled]="isSubmitting"
           >
             Nächstes Control
+          </button>
+
+          <button
+            *ngIf="isLastControl"
+            type="button"
+            class="primary-action danger-submit"
+            (click)="confirmSubmitAssessment()"
+            [disabled]="isSubmitting"
+          >
+            {{ isSubmitting ? 'Assessment wird übermittelt ...' : 'Assessment abschließen' }}
           </button>
         </div>
       </footer>
@@ -318,7 +365,7 @@
     <aside class="assessment-sidepanel">
       <section class="info-card mil-card">
         <div class="info-card-head">
-          <h3>Maturity Level</h3>
+          <h3>Maturity Indicator Level</h3>
           <span class="info-badge">{{ currentMilLabel }}</span>
         </div>
 
@@ -344,7 +391,7 @@
         </p>
       </section>
 
-      <section class="info-card">
+      <section class="info-card" *ngIf="selectedMetric">
         <div class="info-card-head">
           <h3>Notizen</h3>
           <span class="optional-label">optional</span>
@@ -380,6 +427,39 @@
             }}
           </p>
         </div>
+      </section>
+
+      <section class="info-card" *ngIf="selectedMetric">
+        <div class="info-card-head">
+          <h3>Status</h3>
+        </div>
+
+        <p *ngIf="hasSavedAnswerForSelectedMetric; else draftState">
+          Diese Bewertung wurde in der aktuellen Assessment-Session gespeichert und wird erst beim Abschluss an das Backend übermittelt.
+        </p>
+
+        <ng-template #draftState>
+          <p>Diese Bewertung liegt aktuell nur als Entwurf in der Session vor.</p>
+        </ng-template>
+
+      </section>
+
+      <section class="info-card" *ngIf="isLastControl">
+        <div class="info-card-head">
+          <h3>Finalisierung</h3>
+        </div>
+
+        <p *ngIf="totalMissingMetricCount > 0">
+          Es fehlen noch {{ totalMissingMetricCount }} Antworten im aktuellen Control.
+        </p>
+
+        <p *ngIf="totalMissingMetricCount === 0">
+          Im aktuellen Control fehlen keine Antworten mehr.
+        </p>
+
+        <p>
+          Nach dem Absenden sind keine Änderungen an diesem Assessment mehr möglich.
+        </p>
       </section>
     </aside>
   </main>
