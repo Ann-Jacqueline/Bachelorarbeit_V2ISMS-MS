@@ -4,7 +4,7 @@ Webanwendung zur Bewertung des Reifegrads von Informationssicherheits‑Kontroll
 Das Projekt kombiniert ein Angular‑Frontend mit einem Flask‑Backend und stellt sowohl eine metrische Sicht auf Controls als auch einen geführten Maturity‑Assessment‑Workflow bereit.
 
 <p align="center">
-  <video src="https://github.com/Ann-Jacqueline/Bachelorarbeit_V2ISMS-MS/issues/1#issue-5063287946"
+  <video src="https://github.com/user-attachments/assets/1a804d2c-c782-4cd8-a982-e8af29c1ea0e"
          width="80%" controls></video>
 </p> 
 
