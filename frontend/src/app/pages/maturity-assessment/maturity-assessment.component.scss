@@ -3,6 +3,7 @@
   min-height: 100vh;
   width: 100%;
   margin: 0;
+  padding-top: 2.5rem; /* oder max. 0.5rem, aber nicht mehr 2.5rem */
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 28%),
     linear-gradient(180deg, #0a0f1c 0%, #0b1120 100%);
@@ -16,8 +17,10 @@
   box-sizing: border-box;
 }
 
+/* Basisklassen */
+
 .assessment-shell {
-  min-height: 100vh;
+  min-height: calc(100vh - 4.5rem);
   display: grid;
   grid-template-columns: 300px 1fr;
   background: transparent;
@@ -30,6 +33,37 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.assessment-main {
+  min-width: 0;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+}
+
+.assessment-workspace,
+.assessment-sidepanel {
+  min-width: 0;
+}
+
+/* Maturity-spezifische Modifier – nur hier „ziehen wir hoch“ */
+
+.assessment-shell--maturity {
+  margin-top: -1rem;            /* linkes Grid näher unter Logo */
+}
+
+.assessment-sidebar--maturity {
+  padding-top: 0.2rem;          /* Sidebar-Kopf dichter unter Logo */
+}
+
+.assessment-main--maturity {
+  margin-top: -0.5rem;          /* Workspace näher unter Logo */
+}
+
+.assessment-sidepanel--maturity {
+  margin-top: 0.5rem;
 }
 
 .brand-block {
@@ -916,6 +950,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  margin-top: 5rem;
 }
 
 .info-card {
@@ -1101,7 +1136,7 @@
 
 @media (max-width: 760px) {
   .assessment-main {
-    padding: 0.8rem;
+   padding-top: 0;
   }
 
   .assessment-workspace {

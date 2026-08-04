@@ -2,3 +2,44 @@
   display: block;
   min-height: 100vh;
 }
+
+.app-topbar {
+  position: absolute;
+  padding-top: 0.7rem;
+  right: 1.25rem;
+  left: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 5000;
+  pointer-events: none;
+}
+
+.app-topbar-spacer {
+  flex: 1 1 auto;
+}
+
+.app-logo {
+  width: 300px;
+  max-width: 32vw;
+  min-width: 190px;
+  height: auto;
+  object-fit: contain;
+  pointer-events: auto;
+  display: block;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.28));
+}
+
+@media (max-width: 900px) {
+  .app-topbar {
+    top: 0.65rem;
+    right: 0.85rem;
+    left: 0.85rem;
+  }
+
+  .app-logo {
+    width: 220px;
+    max-width: 46vw;
+    min-width: 150px;
+  }
+}

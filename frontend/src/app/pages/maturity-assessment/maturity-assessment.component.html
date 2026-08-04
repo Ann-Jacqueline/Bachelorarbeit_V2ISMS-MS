@@ -1,5 +1,5 @@
-<div class="assessment-shell">
-  <aside class="assessment-sidebar">
+<div class="assessment-shell assessment-shell--maturity">
+  <aside class="assessment-sidebar assessment-sidebar--maturity">
     <div class="brand-block">
       <div class="brand-mark">⬡</div>
       <div>
@@ -14,7 +14,9 @@
       </div>
 
       <div *ngIf="isLoading" class="sidebar-state">Lade Controls ...</div>
-      <div *ngIf="errorMessage" class="sidebar-state error">{{ errorMessage }}</div>
+      <div *ngIf="errorMessage" class="sidebar-state error">
+        {{ errorMessage }}
+      </div>
 
       <ul *ngIf="!isLoading && controls.length" class="control-nav">
         <li *ngFor="let control of controls">
@@ -38,12 +40,10 @@
           <span class="legend-dot control"></span>
           <span>Control</span>
         </div>
-
         <div class="legend-row">
           <span class="legend-dot verification"></span>
           <span>Verifikation</span>
         </div>
-
         <div class="legend-row">
           <span class="legend-dot validation"></span>
           <span>Validierung</span>
@@ -52,7 +52,7 @@
     </div>
   </aside>
 
-  <main class="assessment-main">
+  <main class="assessment-main assessment-main--maturity">
     <section class="assessment-workspace">
       <header class="workspace-header">
         <div>
@@ -94,7 +94,9 @@
               </div>
 
               <div class="metric-group-card-meta">
-                <span class="metric-group-count">{{ verificationMetrics.length }}</span>
+                <span class="metric-group-count">
+                  {{ verificationMetrics.length }}
+                </span>
                 <span class="metric-group-toggle">
                   {{ isGroupExpanded('verification') ? '−' : '+' }}
                 </span>
@@ -110,7 +112,9 @@
                 (click)="openMetricDetail(metric)"
               >
                 <span class="metric-list-item-name">{{ metric.name }}</span>
-                <span class="metric-list-item-score">{{ formatScore(metric.score) }}</span>
+                <span class="metric-list-item-score">
+                  {{ formatScore(metric.score) }}
+                </span>
               </button>
             </div>
           </div>
@@ -130,7 +134,9 @@
               </div>
 
               <div class="metric-group-card-meta">
-                <span class="metric-group-count">{{ validationMetrics.length }}</span>
+                <span class="metric-group-count">
+                  {{ validationMetrics.length }}
+                </span>
                 <span class="metric-group-toggle">
                   {{ isGroupExpanded('validation') ? '−' : '+' }}
                 </span>
@@ -146,7 +152,9 @@
                 (click)="openMetricDetail(metric)"
               >
                 <span class="metric-list-item-name">{{ metric.name }}</span>
-                <span class="metric-list-item-score">{{ formatScore(metric.score) }}</span>
+                <span class="metric-list-item-score">
+                  {{ formatScore(metric.score) }}
+                </span>
               </button>
             </div>
           </div>
@@ -196,32 +204,38 @@
           <div class="metric-detail-section">
             <h4>Beispiels-Assets</h4>
 
-           <ng-container *ngIf="selectedEvidenceItems.length; else noEvidenceAssets">
-          <ul class="metric-evidence-list">
-            <li
-              *ngFor="let evidence of selectedEvidenceItems"
-              class="metric-evidence-item"
+            <ng-container
+              *ngIf="selectedEvidenceItems.length; else noEvidenceAssets"
             >
-              <span class="metric-evidence-asset">
-                {{ evidence.name || evidence.data['asset'] || 'Unbenanntes Asset' }}
-              </span>
+              <ul class="metric-evidence-list">
+                <li
+                  *ngFor="let evidence of selectedEvidenceItems"
+                  class="metric-evidence-item"
+                >
+                  <span class="metric-evidence-asset">
+                    {{
+                      evidence.name ||
+                      evidence.data['asset'] ||
+                      'Unbenanntes Asset'
+                    }}
+                  </span>
 
-              <span
-                class="metric-evidence-type"
-                *ngIf="evidence.data['evidenz_art']"
-              >
-                {{ evidence.data['evidenz_art'] }}
-              </span>
+                  <span
+                    class="metric-evidence-type"
+                    *ngIf="evidence.data['evidenz_art']"
+                  >
+                    {{ evidence.data['evidenz_art'] }}
+                  </span>
 
-              <p
-                class="metric-evidence-description"
-                *ngIf="evidence.data['beschreibung']"
-              >
-                {{ evidence.data['beschreibung'] }}
-              </p>
-            </li>
-          </ul>
-        </ng-container>
+                  <p
+                    class="metric-evidence-description"
+                    *ngIf="evidence.data['beschreibung']"
+                  >
+                    {{ evidence.data['beschreibung'] }}
+                  </p>
+                </li>
+              </ul>
+            </ng-container>
 
             <ng-template #noEvidenceAssets>
               <p>Keine Beispiel-Assets vorhanden.</p>
@@ -259,7 +273,11 @@
           <h3>{{ selectedMetric?.name || controlName }}</h3>
 
           <p class="question-description">
-            {{ selectedMetric ? selectedMetricDescriptionText : controlDescription }}
+            {{
+              selectedMetric
+                ? selectedMetricDescriptionText
+                : controlDescription
+            }}
           </p>
         </div>
       </section>
@@ -308,11 +326,13 @@
         </p>
 
         <p *ngIf="totalMissingMetricCount > 0">
-          Noch nicht beantwortete Metriken im aktuellen Control werden automatisch mit 0 bewertet.
+          Noch nicht beantwortete Metriken im aktuellen Control werden
+          automatisch mit 0 bewertet.
         </p>
 
         <p *ngIf="totalMissingMetricCount === 0">
-          Alle Metriken im aktuellen Control sind beantwortet und bereit zur Übermittlung.
+          Alle Metriken im aktuellen Control sind beantwortet und bereit zur
+          Übermittlung.
         </p>
       </section>
 
@@ -356,13 +376,17 @@
             (click)="confirmSubmitAssessment()"
             [disabled]="isSubmitting"
           >
-            {{ isSubmitting ? 'Assessment wird übermittelt ...' : 'Assessment abschließen' }}
+            {{
+              isSubmitting
+                ? 'Assessment wird übermittelt ...'
+                : 'Assessment abschließen'
+            }}
           </button>
         </div>
       </footer>
     </section>
 
-    <aside class="assessment-sidepanel">
+    <aside class="assessment-sidepanel assessment-sidepanel--maturity">
       <section class="info-card mil-card">
         <div class="info-card-head">
           <h3>Maturity Indicator Level</h3>
@@ -414,7 +438,9 @@
       <section class="info-card metrics-card" *ngIf="selectedMetric">
         <div class="info-card-head">
           <h3>Ausgewählte Metrik</h3>
-          <span class="metric-score">{{ formatScore(selectedMetric.score) }}</span>
+          <span class="metric-score">
+            {{ formatScore(selectedMetric.score) }}
+          </span>
         </div>
 
         <div class="selected-metric-block">
@@ -435,13 +461,15 @@
         </div>
 
         <p *ngIf="hasSavedAnswerForSelectedMetric; else draftState">
-          Diese Bewertung wurde in der aktuellen Assessment-Session gespeichert und wird erst beim Abschluss an das Backend übermittelt.
+          Diese Bewertung wurde in der aktuellen Assessment-Session gespeichert und
+          wird erst beim Abschluss an das Backend übermittelt.
         </p>
 
         <ng-template #draftState>
-          <p>Diese Bewertung liegt aktuell nur als Entwurf in der Session vor.</p>
+          <p>
+            Diese Bewertung liegt aktuell nur als Entwurf in der Session vor.
+          </p>
         </ng-template>
-
       </section>
 
       <section class="info-card" *ngIf="isLastControl">
@@ -450,7 +478,8 @@
         </div>
 
         <p *ngIf="totalMissingMetricCount > 0">
-          Es fehlen noch {{ totalMissingMetricCount }} Antworten im aktuellen Control.
+          Es fehlen noch {{ totalMissingMetricCount }} Antworten im aktuellen
+          Control.
         </p>
 
         <p *ngIf="totalMissingMetricCount === 0">
@@ -458,7 +487,8 @@
         </p>
 
         <p>
-          Nach dem Absenden sind keine Änderungen an diesem Assessment mehr möglich.
+          Nach dem Absenden sind keine Änderungen an diesem Assessment mehr
+          möglich.
         </p>
       </section>
     </aside>

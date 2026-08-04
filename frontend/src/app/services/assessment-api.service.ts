@@ -133,25 +133,6 @@ export class AssessmentApiService {
     );
   }
 
-  getControlView(
-    sessionId: string,
-    controlId: string
-  ): Observable<ApiResponse<MaturityControlViewData>> {
-    return this.http.get<ApiResponse<MaturityControlViewData>>(
-      `${this.baseUrl}/session/${sessionId}/control/${controlId}`
-    );
-  }
-
-  saveControlRating(
-    sessionId: string,
-    controlId: string,
-    payload: { mil_level: number | null; note?: string | null }
-  ): Observable<ApiResponse<SubmittedControlSummary>> {
-    return this.http.post<ApiResponse<SubmittedControlSummary>>(
-      `${this.baseUrl}/session/${sessionId}/control/${controlId}/rating`,
-      payload
-    );
-  }
 
   getSessionSummary(
     sessionId: string

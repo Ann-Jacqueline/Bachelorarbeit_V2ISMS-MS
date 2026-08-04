@@ -1,18 +1,19 @@
 <div class="metric-view-page">
   <header class="metric-view-header">
-    <div>
+    <div class="metric-view-header-copy">
       <p class="layer-label">SCHICHT 3</p>
       <h1>Metric View</h1>
       <p class="subtitle">Transparenzsicht konzeptionell</p>
     </div>
-    <button
-  type="button"
-  class="maturity-evaluator-button"
-  (click)="goToMaturityEvaluator()"
->
-  Zum Maturity Evaluator
-</button>
   </header>
+
+  <button
+    type="button"
+    class="maturity-evaluator-button floating"
+    (click)="goToMaturityEvaluator()"
+  >
+    Zum Maturity Evaluator
+  </button>
 
   <main class="metric-view-layout">
     <aside class="controls-panel">
