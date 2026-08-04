@@ -3,6 +3,11 @@
 Webanwendung zur Bewertung des Reifegrads von Informationssicherheits‑Kontrollen der ISO 27001.  
 Das Projekt kombiniert ein Angular‑Frontend mit einem Flask‑Backend und stellt sowohl eine metrische Sicht auf Controls als auch einen geführten Maturity‑Assessment‑Workflow bereit.
 
+<p align="center">
+  <video src="https://github.com/Ann-Jacqueline/Bachelorarbeit_V2ISMS-MS/issues/1#issue-5063287946"
+         width="80%" controls></video>
+</p> 
+
 ## Features
 
 - Metric View für ISO‑Controls mit hierarchischem Metrikbaum (Metric Groups, Metrics, Evidenzen).
