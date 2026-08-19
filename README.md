@@ -6,13 +6,7 @@ Webanwendung zur systematischen Bewertung des Reifegrads von Informationssicherh
 
 Das Projekt kombiniert ein **Angular-Frontend** mit einem **Flask-Backend** und stellt sowohl eine metrische Sicht auf einzelne Controls (Metric View) als auch einen geführten Maturity-Assessment-Workflow mit automatisierter Score-Berechnung bereit.
 
-<p align="center">
-  <video src="media/V2ISMSMS.mp4" width="80%" controls></video>
-</p>
-
-<p align="center">
-  <em>Demo-Video: Durchlauf durch Metric View und Maturity-Assessment-Workflow</em>
-</p>
+https://github.com/user-attachments/assets/4639b4ea-f0bf-4cd8-94fd-4605bd1a44ee
 
 ---
 
