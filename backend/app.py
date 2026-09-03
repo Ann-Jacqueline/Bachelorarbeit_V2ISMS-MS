@@ -1,14 +1,28 @@
-from flask import Flask, jsonify, request
+import os
 import sqlite3
+from pathlib import Path
+
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+
+# Lädt .env aus dem Projektroot (API-Keys, Provider-Konfiguration)
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from module_metric_view.MetricQueryService import MetricViewQueryService
 from module_maturity_evaluation.MaturityService import MaturityService
+from module_agents.AgentService import AgentService
 
 app = Flask(__name__)
 CORS(app)
 
-DATABASE_PATH = r"C:\Users\Ann-Ja\PycharmProjects\Bachelorarbeit_V2ISMS-MS\V2ISMS-MS.sqlite.sqlite"
+# DB-Pfad: per Umgebungsvariable V2ISMS_DB_PATH überschreibbar,
+# Default: V2ISMS-MS.sqlite.sqlite im Projektroot (ein Verzeichnis über backend/)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATABASE_PATH = os.environ.get(
+    "V2ISMS_DB_PATH",
+    str(_PROJECT_ROOT / "V2ISMS-MS.sqlite.sqlite"),
+)
 
 
 @app.get("/")
@@ -248,6 +262,85 @@ def submit_maturity_session(session_id):
 
     finally:
         conn.close()
+
+# --- Agent-Infrastruktur (Phase 0): Status, Audit-Trail, Freigabe-Workflow ---
+
+@app.get("/api/agents/status")
+def get_agent_status():
+    """Zeigt, welcher LLM-Provider aktuell konfiguriert ist."""
+    conn = create_connection()
+    try:
+        agent_service = AgentService(conn)
+        return jsonify({
+            "status": "success",
+            "data": {
+                "provider": agent_service.llm_client.provider_name,
+                "note": (
+                    "Mock-Provider aktiv – kein echtes LLM angebunden."
+                    if agent_service.llm_client.provider_name == "mock"
+                    else "Echter LLM-Provider aktiv."
+                ),
+            },
+        }), 200
+    finally:
+        conn.close()
+
+
+@app.post("/api/agents/test-call")
+def agent_test_call():
+    """Test-Endpoint: führt einen Agent-Call end-to-end aus (inkl. Logging)."""
+    conn = create_connection()
+    try:
+        payload = request.get_json(silent=True) or {}
+        agent_service = AgentService(conn)
+        response = agent_service.run_agent_action(
+            agent_name="test_agent",
+            action="test_call",
+            system_prompt=payload.get("system_prompt", "Du bist ein Test-Agent."),
+            user_prompt=payload.get("user_prompt", "Ping."),
+            session_id=payload.get("session_id"),
+            control_id=payload.get("control_id"),
+        )
+        return jsonify(response), 200 if response["status"] == "success" else 500
+    finally:
+        conn.close()
+
+
+@app.get("/api/agents/logs")
+def get_agent_logs_endpoint():
+    """Audit-Trail: alle Agent-Calls, optional gefiltert (?status=, ?session_id=)."""
+    conn = create_connection()
+    try:
+        agent_service = AgentService(conn)
+        response = agent_service.list_proposals(
+            status=request.args.get("status"),
+            session_id=request.args.get("session_id"),
+        )
+        return jsonify(response), 200
+    finally:
+        conn.close()
+
+
+@app.post("/api/agents/logs/<int:log_id>/review")
+def review_agent_proposal(log_id):
+    """Menschliche Freigabe: {\"decision\": \"accepted\"|\"rejected\", \"reviewed_by\": \"...\"}."""
+    conn = create_connection()
+    try:
+        payload = request.get_json(silent=True) or {}
+        agent_service = AgentService(conn)
+        response = agent_service.review_proposal(
+            log_id=log_id,
+            decision=payload.get("decision", ""),
+            reviewed_by=payload.get("reviewed_by"),
+        )
+        if response["status"] == "success":
+            return jsonify(response), 200
+        if response["status"] == "not_found":
+            return jsonify(response), 404
+        return jsonify(response), 400
+    finally:
+        conn.close()
+
 
 if __name__ == "__main__":
     app.run(debug=True)

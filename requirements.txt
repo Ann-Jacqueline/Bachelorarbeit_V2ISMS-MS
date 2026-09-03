@@ -1,0 +1,7 @@
+flask>=3.0
+flask-cors>=4.0
+python-dotenv>=1.0
+
+# LLM-Provider: openai-Paket wird auch für DeepSeek genutzt (OpenAI-kompatible API)
+openai>=1.0          # für AGENT_LLM_PROVIDER=openai (+ OPENAI_API_KEY) oder deepseek (+ DEEPSEEK_API_KEY)
+# anthropic>=0.40    # für AGENT_LLM_PROVIDER=anthropic (+ ANTHROPIC_API_KEY)
