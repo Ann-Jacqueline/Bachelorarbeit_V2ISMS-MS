@@ -85,6 +85,10 @@
           <p class="card-kicker">Domänenübersicht</p>
           <h2>{{ totalDomains }} Domänen ausgewertet</h2>
         </div>
+
+        <span class="agent-provider-badge" *ngIf="agentProvider">
+          Agent-Provider: {{ agentProvider }}
+        </span>
       </div>
 
       <div class="domain-list" *ngIf="domains.length; else noDomains">
@@ -113,11 +117,103 @@
           </div>
 
           <div class="domain-controls" *ngIf="domain.controls.length">
-            <div class="domain-control-row" *ngFor="let control of domain.controls">
-              <span class="control-id">{{ control.control_id }}</span>
-              <span class="control-mil">
-                {{ control.mil_label || formatMil(control.mil_level) }}
-              </span>
+            <div
+              class="domain-control-block"
+              *ngFor="let control of domain.controls; trackBy: trackByControl"
+            >
+              <div class="domain-control-row">
+                <span class="control-id">{{ control.control_id }}</span>
+
+                <div class="control-actions">
+                  <button
+                    type="button"
+                    class="note-toggle"
+                    *ngIf="control.has_note"
+                    (click)="toggleNote(control.control_id)"
+                  >
+                    {{ isNoteExpanded(control.control_id) ? 'Notiz ausblenden' : 'Notiz anzeigen' }}
+                  </button>
+
+                  <button
+                    type="button"
+                    class="agent-action"
+                    *ngIf="control.has_note"
+                    [disabled]="getAgentState(control.control_id).isAnalyzing"
+                    (click)="analyzeNote(control)"
+                  >
+                    {{
+                      getAgentState(control.control_id).isAnalyzing
+                        ? 'Analysiere ...'
+                        : (agentStateFor(control.control_id)?.proposal
+                            ? 'Notiz erneut analysieren'
+                            : 'Notiz mit Agent analysieren')
+                    }}
+                  </button>
+
+                  <span class="control-mil">
+                    {{ control.mil_label || formatMil(control.mil_level) }}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                class="control-note"
+                *ngIf="control.has_note && isNoteExpanded(control.control_id)"
+              >
+                <p class="note-label">Audit-Notiz</p>
+                <p class="note-text">{{ control.note }}</p>
+              </div>
+
+              <ng-container *ngIf="agentStateFor(control.control_id) as agentState">
+                <div class="agent-error" *ngIf="agentState.error">
+                  {{ agentState.error }}
+                </div>
+
+                <div class="agent-proposal" *ngIf="agentState.proposal">
+                  <div class="agent-proposal-head">
+                    <span class="agent-badge">Agent-Analyse (Vorschlag)</span>
+                    <span
+                      class="review-badge"
+                      [class.review-proposed]="agentState.reviewStatus === 'proposed'"
+                      [class.review-accepted]="agentState.reviewStatus === 'accepted'"
+                      [class.review-rejected]="agentState.reviewStatus === 'rejected'"
+                    >
+                      {{ reviewStatusLabel(agentState.reviewStatus) }}
+                    </span>
+                  </div>
+
+                  <pre class="agent-proposal-text">{{ agentState.proposal }}</pre>
+
+                  <div class="agent-proposal-meta" *ngIf="agentState.provider">
+                    Provider: {{ agentState.provider }}
+                    <ng-container *ngIf="agentState.reviewedBy">
+                      · Review durch: {{ agentState.reviewedBy }}
+                    </ng-container>
+                  </div>
+
+                  <div
+                    class="agent-review-actions"
+                    *ngIf="agentState.reviewStatus === 'proposed'"
+                  >
+                    <button
+                      type="button"
+                      class="review-accept"
+                      [disabled]="agentState.isReviewing"
+                      (click)="reviewProposal(control.control_id, 'accepted')"
+                    >
+                      Freigeben
+                    </button>
+                    <button
+                      type="button"
+                      class="review-reject"
+                      [disabled]="agentState.isReviewing"
+                      (click)="reviewProposal(control.control_id, 'rejected')"
+                    >
+                      Ablehnen
+                    </button>
+                  </div>
+                </div>
+              </ng-container>
             </div>
           </div>
         </article>

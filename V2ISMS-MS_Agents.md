@@ -95,4 +95,4 @@ Drei konkrete Übergangspunkte, sonst keine:
 
 V²ISMS-MS funktioniert heute wie ein zuverlässiger Taschenrechner mit festen Formeln – gut für das, wofür er gebaut wurde, aber blind für alles außerhalb starrer Namensmuster und Zahlen. Agentic AI wird **nicht** eingeführt, um den Taschenrechner zu ersetzen, sondern um ihm an drei klar begrenzten Stellen (Freitext, neue Kandidaten, Begründungstext) ein Sprachverständnis zur Seite zu stellen – immer mit Mensch als letzter Instanz.
 
-#
+#Note FE Verbund User begrünung bewertung in FE:okay der log sieht gut aus jetzt müssen wir es ans Frontend anbinden. Ich will das es möglich ist in der Review Summary in backend/module_maturity_evaluation/score_aggregation.py

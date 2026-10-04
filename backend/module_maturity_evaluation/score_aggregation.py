@@ -26,7 +26,9 @@ def build_domain_summary(ratings):
             {
                 "control_id": row["control_id"],
                 "mil_level": row["mil_level"],
-                "mil_label": get_mil_label(row["mil_level"]) if row["mil_level"] is not None else None
+                "mil_label": get_mil_label(row["mil_level"]) if row["mil_level"] is not None else None,
+                "note": (str(row["note"]).strip() if row["note"] and str(row["note"]).strip() else None),
+                "has_note": bool(row["note"] and str(row["note"]).strip())
             }
             for row in sorted(rows, key=lambda item: item["control_id"])
         ]

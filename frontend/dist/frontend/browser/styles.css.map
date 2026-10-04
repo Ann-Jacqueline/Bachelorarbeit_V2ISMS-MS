@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/styles.scss"],
+  "sourcesContent": ["html,\nbody {\n  margin: 0;\n  padding: 0;\n  min-height: 100%;\n  background: #020617;\n}\n\nbody {\n  overflow-x: hidden;\n}\n"],
+  "mappings": ";AAAA;AAAA;AAEE,UAAA;AACA,WAAA;AACA,cAAA;AACA,cAAA;;AAGF;AACE,cAAA;;",
+  "names": []
+}

@@ -3,8 +3,8 @@
 Design-Prinzip (siehe V2ISMS-MS_Agents.md):
 - Agenten haben ausschließlich Vorschlagsrecht (max. Level 2).
 - Der Provider ist per Umgebungsvariable austauschbar:
-    AGENT_LLM_PROVIDER = mock | openai | anthropic | deepseek   (Default: mock)
-    AGENT_LLM_MODEL    = Modellname (optional, providerabhängiger Default)
+    AGENT_LLM_PROVIDER = mock | openai | anthropic | deepseek (Default: mock)
+    AGENT_LLM_MODEL = Modellname (optional, providerabhängiger Default)
     OPENAI_API_KEY / ANTHROPIC_API_KEY / DEEPSEEK_API_KEY = API-Key des Providers
 
 Der Mock-Provider erlaubt Entwicklung und Tests komplett ohne API-Key.
@@ -97,30 +97,6 @@ class DeepSeekClient(OpenAIClient):
         self._model = model or self.default_model
 
 
-class AnthropicClient(LLMClient):
-    """Anthropic-Provider (benötigt `anthropic`-Paket und ANTHROPIC_API_KEY)."""
-
-    provider_name = "anthropic"
-    default_model = "claude-sonnet-4-5"
-
-    def __init__(self, model: str | None = None):
-        import anthropic  # lazy import
-        self._client = anthropic.Anthropic()  # liest ANTHROPIC_API_KEY aus der Umgebung
-        self._model = model or self.default_model
-
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        response = self._client.messages.create(
-            model=self._model,
-            max_tokens=1024,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        return LLMResponse(
-            text=response.content[0].text,
-            model=self._model,
-            provider=self.provider_name,
-        )
-
 
 def create_llm_client() -> LLMClient:
     """Factory: liefert den per AGENT_LLM_PROVIDER konfigurierten Client."""
@@ -131,8 +107,6 @@ def create_llm_client() -> LLMClient:
         return MockLLMClient()
     if provider == "openai":
         return OpenAIClient(model=model)
-    if provider == "anthropic":
-        return AnthropicClient(model=model)
     if provider == "deepseek":
         return DeepSeekClient(model=model)
 

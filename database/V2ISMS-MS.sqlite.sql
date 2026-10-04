@@ -1,1 +1,1 @@
-SELECT * FROM
+SELECT * FROM agent_log;

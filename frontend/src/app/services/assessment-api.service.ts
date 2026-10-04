@@ -79,6 +79,8 @@ export interface MaturityDomainControlSummary {
   control_id: string;
   mil_level: number | null;
   mil_label: string | null;
+  note: string | null;
+  has_note: boolean;
 }
 
 export interface MaturityDomainSummary {

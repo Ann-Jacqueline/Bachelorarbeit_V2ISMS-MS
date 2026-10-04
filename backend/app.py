@@ -12,6 +12,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from module_metric_view.MetricQueryService import MetricViewQueryService
 from module_maturity_evaluation.MaturityService import MaturityService
 from module_agents.AgentService import AgentService
+from module_agents.NoteAnalyzerAgent import NoteAnalyzerAgent
 
 app = Flask(__name__)
 CORS(app)
@@ -302,6 +303,37 @@ def agent_test_call():
             control_id=payload.get("control_id"),
         )
         return jsonify(response), 200 if response["status"] == "success" else 500
+    finally:
+        conn.close()
+
+
+@app.post("/api/agents/session/<session_id>/controls/<control_id>/analyze-note")
+def analyze_control_note(session_id, control_id):
+    """Phase 1 / Switch 2: analysiert die gespeicherte Audit-Notiz eines Controls.
+
+    Ergebnis ist immer nur ein Vorschlag (agent_log, status='proposed') –
+    Freigabe erfolgt über POST /api/agents/logs/<log_id>/review.
+    """
+    conn = create_connection()
+    try:
+        agent = NoteAnalyzerAgent(conn)
+        response = agent.analyze_note_response(session_id, control_id)
+
+        if response["status"] == "success":
+            return jsonify(response), 200
+        if response["status"] == "not_found":
+            return jsonify(response), 404
+        if response["status"] == "no_note":
+            return jsonify(response), 422
+        return jsonify(response), 500
+
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Interner Fehler bei der Notiz-Analyse.",
+            "data": None
+        }), 500
+
     finally:
         conn.close()
 

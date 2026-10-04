@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/services/metric-view.service.ts"],
+  "sourcesContent": ["import { Injectable, inject } from '@angular/core';\nimport { HttpClient } from '@angular/common/http';\nimport { Observable } from 'rxjs';\nimport { MetricViewResponse, ControlsResponse } from '../models/metric.models';\n\n@Injectable({\n  providedIn: 'root'\n})\nexport class MetricViewService {\n  private http = inject(HttpClient);\n  private apiUrl = 'http://127.0.0.1:5000/api';\n\n  getControls(): Observable<ControlsResponse> {\n    return this.http.get<ControlsResponse>(`${this.apiUrl}/controls`);\n  }\n\n  getMetricViewForControl(controlId: string): Observable<MetricViewResponse> {\n    return this.http.get<MetricViewResponse>(`${this.apiUrl}/metric-view/control/${controlId}`);\n  }\n}\n"],
+  "mappings": ";;;;;;;;;AAQM,IAAO,oBAAP,MAAO,mBAAiB;EACpB,OAAO,OAAO,UAAU;EACxB,SAAS;EAEjB,cAAW;AACT,WAAO,KAAK,KAAK,IAAsB,GAAG,KAAK,MAAM,WAAW;EAClE;EAEA,wBAAwB,WAAiB;AACvC,WAAO,KAAK,KAAK,IAAwB,GAAG,KAAK,MAAM,wBAAwB,SAAS,EAAE;EAC5F;;qCAVW,oBAAiB;EAAA;4EAAjB,oBAAiB,SAAjB,mBAAiB,WAAA,YAFhB,OAAM,CAAA;;;sEAEP,mBAAiB,CAAA;UAH7B;WAAW;MACV,YAAY;KACb;;;",
+  "names": []
+}
