@@ -316,23 +316,15 @@
         <div class="submit-warning-head">
           <h3>Assessment abschließen</h3>
           <span class="submit-warning-badge">
-            {{ totalMissingMetricCount }} offen
+            {{ totalIncompleteControlCount }} unvollständig
           </span>
         </div>
 
         <p>
           Mit dem finalen Absenden wird das Assessment abgeschlossen und kann danach
-          nicht mehr verändert werden.
-        </p>
-
-        <p *ngIf="totalMissingMetricCount > 0">
-          Noch nicht beantwortete Metriken im aktuellen Control werden
-          automatisch mit 0 bewertet.
-        </p>
-
-        <p *ngIf="totalMissingMetricCount === 0">
-          Alle Metriken im aktuellen Control sind beantwortet und bereit zur
-          Übermittlung.
+          nicht mehr verändert werden. Es können dabei bewusst einzelne Controls
+          unvollständig gelassen werden – die fehlenden Antworten zählen dann mit
+          0 Punkten.
         </p>
       </section>
 
@@ -477,13 +469,13 @@
           <h3>Finalisierung</h3>
         </div>
 
-        <p *ngIf="totalMissingMetricCount > 0">
-          Es fehlen noch {{ totalMissingMetricCount }} Antworten im aktuellen
-          Control.
+        <p *ngIf="totalIncompleteControlCount > 0">
+          {{ totalIncompleteControlCount }} Control{{ totalIncompleteControlCount === 1 ? '' : 's' }}
+          mit offenen Antworten im gesamten Assessment.
         </p>
 
-        <p *ngIf="totalMissingMetricCount === 0">
-          Im aktuellen Control fehlen keine Antworten mehr.
+        <p *ngIf="totalIncompleteControlCount === 0">
+          Alle Controls sind vollständig beantwortet.
         </p>
 
         <p>

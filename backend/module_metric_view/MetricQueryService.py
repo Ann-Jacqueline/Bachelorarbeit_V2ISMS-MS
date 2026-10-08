@@ -1,4 +1,5 @@
 from module_decision_engine.DecisionService import DecisionService
+from module_maturity_evaluation.expected_metrics import get_metric_counts
 from module_metric_view.ViewAssembler import ViewAssembler
 
 
@@ -51,11 +52,13 @@ class MetricViewQueryService:
                            ORDER BY control_id
                            """)
             rows = cursor.fetchall()
+            metric_counts = get_metric_counts(self.db_connection)
 
             controls = [
                 {
                     "control_id": row["control_id"],
-                    "name": row["name"]
+                    "name": row["name"],
+                    "metric_count": metric_counts.get(row["control_id"], 0)
                 }
                 for row in rows
             ]

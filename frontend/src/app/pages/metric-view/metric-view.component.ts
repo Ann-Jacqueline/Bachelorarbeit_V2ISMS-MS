@@ -77,6 +77,13 @@ export class MetricViewComponent implements OnInit, AfterViewInit {
   isLoading = false;
   errorMessage: string | null = null;
 
+  isCompactLayout = false;
+  canvasScale = 1;
+
+  private readonly designWidth = 1360;
+  private readonly designHeight = 900;
+  private readonly compactBreakpoint = 900;
+
   canvasGroups: CanvasGroup[] = [];
   selectedMetric: CanvasMetricItem | null = null;
 
@@ -383,16 +390,12 @@ export class MetricViewComponent implements OnInit, AfterViewInit {
   }
 
   private updateConnectors(): void {
+    this.computeCanvasScale();
+
     const sceneEl = this.canvasSceneRef?.nativeElement;
     const centerEl = this.centerNodeRef?.nativeElement;
 
-    if (!sceneEl || !centerEl) {
-      this.resetConnectors();
-      return;
-    }
-
-    const isMobileLayout = window.innerWidth <= 1450;
-    if (isMobileLayout) {
+    if (!sceneEl || !centerEl || this.isCompactLayout) {
       this.resetConnectors();
       return;
     }
@@ -471,6 +474,32 @@ export class MetricViewComponent implements OnInit, AfterViewInit {
       end: target,
       control
     };
+  }
+
+  private computeCanvasScale(): void {
+    const sceneEl = this.canvasSceneRef?.nativeElement;
+
+    if (!sceneEl || window.innerWidth < this.compactBreakpoint) {
+      this.isCompactLayout = true;
+      this.canvasScale = 1;
+      return;
+    }
+
+    this.isCompactLayout = false;
+    const availableWidth = sceneEl.clientWidth;
+    this.canvasScale = Math.min(1, availableWidth / this.designWidth);
+  }
+
+  get sceneTransform(): string {
+    return `scale(${this.canvasScale})`;
+  }
+
+  get sceneTransformOrigin(): string {
+    return 'top center';
+  }
+
+  get sceneMinHeight(): number | null {
+    return this.canvasScale < 1 ? this.designHeight : null;
   }
 
   private resetConnectors(): void {

@@ -1,9 +1,10 @@
 import os
 import sqlite3
+from io import BytesIO
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
 # Lädt .env aus dem Projektroot (API-Keys, Provider-Konfiguration)
@@ -13,6 +14,10 @@ from module_metric_view.MetricQueryService import MetricViewQueryService
 from module_maturity_evaluation.MaturityService import MaturityService
 from module_agents.AgentService import AgentService
 from module_agents.NoteAnalyzerAgent import NoteAnalyzerAgent
+from module_report.ReportService import ReportService
+from module_report.json_exporter import render_json
+from module_report.markdown_renderer import render_markdown
+from module_report.pdf_renderer import render_pdf
 
 app = Flask(__name__)
 CORS(app)
@@ -39,7 +44,9 @@ def home():
             "/api/maturity/session/<session_id>/controls/<control_id>/rating",
             "/api/maturity/session/<session_id>/summary",
             "/api/maturity/session/<session_id>/complete",
-            "/api/maturity/session/<session_id>/submit"
+            "/api/maturity/session/<session_id>/submit",
+            "/api/maturity/session/<session_id>/report",
+            "/api/maturity/session/<session_id>/export?format=json|markdown|pdf"
         ]
     }, 200
 
@@ -263,6 +270,92 @@ def submit_maturity_session(session_id):
 
     finally:
         conn.close()
+
+@app.get("/api/maturity/session/<session_id>/report")
+def get_maturity_report(session_id):
+    conn = create_connection()
+    try:
+        report_service = ReportService(conn)
+        payload = report_service.build_report_payload(session_id)
+
+        if payload is None:
+            return jsonify({
+                "status": "not_found",
+                "message": "Session wurde nicht gefunden.",
+                "data": None
+            }), 404
+
+        return jsonify({
+            "status": "success",
+            "message": "Report erfolgreich geladen.",
+            "data": payload
+        }), 200
+
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Interner Fehler beim Laden des Reports.",
+            "data": None
+        }), 500
+
+    finally:
+        conn.close()
+
+
+@app.get("/api/maturity/session/<session_id>/export")
+def export_maturity_report(session_id):
+    """Lädt den Report als Datei (json | markdown | pdf) herunter."""
+    conn = create_connection()
+
+    try:
+        export_format = request.args.get("format", "json").lower()
+        report_service = ReportService(conn)
+        payload = report_service.build_report_payload(session_id)
+
+        if payload is None:
+            return jsonify({
+                "status": "not_found",
+                "message": "Session wurde nicht gefunden.",
+                "data": None
+            }), 404
+
+        if export_format == "json":
+            data = render_json(payload)
+            mimetype = "application/json; charset=utf-8"
+            extension = "json"
+        elif export_format in ("markdown", "md"):
+            data = render_markdown(payload)
+            mimetype = "text/markdown; charset=utf-8"
+            extension = "md"
+        elif export_format == "pdf":
+            data = render_pdf(payload)
+            mimetype = "application/pdf"
+            extension = "pdf"
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"Unbekanntes Export-Format '{export_format}'. "
+                           "Erlaubt: json, markdown, pdf.",
+                "data": None
+            }), 400
+
+        return send_file(
+            BytesIO(data if isinstance(data, bytes) else data.encode("utf-8")),
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=f"reifegrad-report-{session_id}.{extension}"
+        )
+
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Interner Fehler beim Export des Reports.",
+            "data": None
+        }), 500
+
+    finally:
+        conn.close()
+
 
 # --- Agent-Infrastruktur (Phase 0): Status, Audit-Trail, Freigabe-Workflow ---
 

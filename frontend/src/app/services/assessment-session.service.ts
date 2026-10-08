@@ -186,6 +186,7 @@ export class AssessmentSessionService {
         updated_at: string;
       }>;
     }>;
+    fill_missing_with_zero: boolean;
   } {
     return {
       sessionId: this.snapshot.sessionId,
@@ -199,7 +200,8 @@ export class AssessmentSessionService {
           notes: answer.notes,
           updated_at: answer.updatedAt
         }))
-      }))
+      })),
+      fill_missing_with_zero: false
     };
   }
 

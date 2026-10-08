@@ -29,7 +29,6 @@
   justify-content: flex-start;
   gap: 1rem;
   margin-bottom: 0.55rem;
-  padding-right: 260px;
 }
 
 .metric-view-header-copy {
@@ -1082,7 +1081,9 @@
   .metric-canvas {
     min-height: auto;
   }
+}
 
+@media (max-width: 900px) {
   .canvas-scene {
     display: flex;
     flex-direction: column;
@@ -1137,17 +1138,10 @@
   .metric-detail-inline {
     margin-top: 0.65rem;
   }
-}
-
-@media (max-width: 900px) {
-  :host {
-    padding-top: 2.75rem;
-  }
 
   .metric-view-header {
     flex-direction: column;
     align-items: stretch;
-    padding-right: 0;
   }
 
   .maturity-evaluator-button {

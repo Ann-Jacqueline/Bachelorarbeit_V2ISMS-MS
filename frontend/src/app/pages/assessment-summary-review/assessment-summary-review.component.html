@@ -1,10 +1,12 @@
 <div class="summary-shell">
   <header class="summary-header">
     <div>
-      <p class="summary-kicker">Assessment Summary</p>
+      <p class="summary-kicker">Reifegrad-Business-Report</p>
       <h1>Review der Ergebnisse</h1>
       <p class="summary-subtitle">
-        Die Maturity-Bewertung wurde abgeschlossen und serverseitig zusammengefasst.
+        Die Maturity-Bewertung wurde abgeschlossen und als Business-Report
+        aufbereitet – inklusive Reifegrad, Abdeckung und Freigabe-Status der
+        Agent-Analysen.
       </p>
     </div>
 
@@ -27,6 +29,35 @@
     </div>
   </header>
 
+  <section class="export-bar" *ngIf="summary">
+    <span class="export-label">Report exportieren</span>
+    <button
+      type="button"
+      class="export-action"
+      [disabled]="isDownloading('json')"
+      (click)="downloadReport('json')"
+    >
+      {{ isDownloading('json') ? 'Lädt ...' : 'JSON' }}
+    </button>
+    <button
+      type="button"
+      class="export-action"
+      [disabled]="isDownloading('markdown')"
+      (click)="downloadReport('markdown')"
+    >
+      {{ isDownloading('markdown') ? 'Lädt ...' : 'Markdown' }}
+    </button>
+    <button
+      type="button"
+      class="export-action pdf"
+      [disabled]="isDownloading('pdf')"
+      (click)="downloadReport('pdf')"
+    >
+      {{ isDownloading('pdf') ? 'Lädt ...' : 'PDF' }}
+    </button>
+    <span class="export-error" *ngIf="downloadError">{{ downloadError }}</span>
+  </section>
+
   <section class="summary-state-card" *ngIf="isLoading">
     <p>Lade Zusammenfassung ...</p>
   </section>
@@ -36,54 +67,60 @@
   </section>
 
   <ng-container *ngIf="!isLoading && !errorMessage && summary">
-    <section class="summary-grid hero-grid">
-      <article class="summary-card session-card">
-        <p class="card-kicker">Session</p>
-        <h2>{{ summary.session_id }}</h2>
-        <div class="session-meta">
-          <span class="status-badge">{{ sessionStatusLabel }}</span>
-          <span *ngIf="summary.updated_at">
-            Aktualisiert: {{ formatDate(summary.updated_at) }}
-          </span>
-        </div>
-      </article>
+    <!-- 1 · Executive Summary -->
+    <section class="summary-card section-card executive-card">
+      <p class="card-kicker">1 · Executive Summary</p>
+      <h2>Reifegradbewertung im Überblick</h2>
 
-      <article class="summary-card stat-card">
-        <p class="card-kicker">Durchschnitt</p>
-        <h2>{{ averageMilLevel }}</h2>
-        <p>Durchschnittlicher Reifegrad über alle bewerteten Controls.</p>
-      </article>
+      <p class="executive-statement" *ngIf="executive?.statement">
+        {{ executive?.statement }}
+      </p>
 
-      <article class="summary-card stat-card">
-        <p class="card-kicker">Reifegrad</p>
-        <h2>{{ overallPercentage }}</h2>
-        <p>Relativer Anteil der erreichten Punkte bezogen auf das Maximum.</p>
-      </article>
+      <div class="summary-grid hero-grid">
+        <article class="summary-card session-card">
+          <p class="card-kicker">Session</p>
+          <h2>{{ summary.session_id }}</h2>
+          <div class="session-meta">
+            <span class="status-badge">{{ sessionStatusLabel }}</span>
+            <span *ngIf="summary.updated_at">
+              Aktualisiert: {{ formatDate(summary.updated_at) }}
+            </span>
+          </div>
+        </article>
 
-      <article class="summary-card stat-card">
-        <p class="card-kicker">Bewertet</p>
-        <h2>{{ totalRatedControls }}</h2>
-        <p>Controls mit gespeicherter Bewertung in dieser Session.</p>
-      </article>
+        <article class="summary-card stat-card">
+          <p class="card-kicker">Reifegrad</p>
+          <h2>{{ overallPercentage }}</h2>
+          <p>Erreichte Punkte bezogen auf den gesamten Prüfumfang.</p>
+        </article>
 
-      <article class="summary-card stat-card">
-        <p class="card-kicker">Nicht bewertet</p>
-        <h2>{{ totalUnratedControls }}</h2>
-        <p>Controls ohne finale Bewertung in dieser Session.</p>
-      </article>
+        <article class="summary-card stat-card">
+          <p class="card-kicker">Abdeckung</p>
+          <h2>{{ coverage?.coverage_percentage !== null && coverage?.coverage_percentage !== undefined ? formatPercentage(coverage?.coverage_percentage) : 'n/a' }}</h2>
+          <p>Aktuell bewertete Controls im Verhältnis zum Prüfumfang.</p>
+        </article>
 
-      <article class="summary-card stat-card">
-        <p class="card-kicker">Punktestand</p>
-        <h2>{{ achievedPointsDisplay }}</h2>
-        <p>Erreichte Punkte im Verhältnis zur maximalen Punktzahl.</p>
-      </article>
+        <article class="summary-card stat-card">
+          <p class="card-kicker">Ø Reifegrad (MIL)</p>
+          <h2>{{ averageMilLevel }}</h2>
+          <p *ngIf="averageMilDisplay">{{ averageMilDisplay }}</p>
+          <p *ngIf="!averageMilDisplay">Durchschnitt aller bewerteten Controls.</p>
+        </article>
+
+        <article class="summary-card stat-card">
+          <p class="card-kicker">Audit-Notizen</p>
+          <h2>{{ totalNoteCount }}</h2>
+          <p>Erfasste Notizen je Metrik, dokumentiert im Report.</p>
+        </article>
+      </div>
     </section>
 
+    <!-- 2 · Gesamtübersicht -->
     <section class="summary-card section-card">
       <div class="section-head">
         <div>
-          <p class="card-kicker">Domänenübersicht</p>
-          <h2>{{ totalDomains }} Domänen ausgewertet</h2>
+          <p class="card-kicker">2 · Gesamtübersicht</p>
+          <h2>Prüfumfang und Bewertungsstatus</h2>
         </div>
 
         <span class="agent-provider-badge" *ngIf="agentProvider">
@@ -91,21 +128,75 @@
         </span>
       </div>
 
+      <div class="overall-grid">
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.total_controls ?? 0 }}</span>
+          <span class="overall-stat-label">Controls im Prüfumfang</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.rated_controls ?? 0 }}</span>
+          <span class="overall-stat-label">Bewertet</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.unrated_controls ?? 0 }}</span>
+          <span class="overall-stat-label">Nicht bewertet</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.complete_controls ?? 0 }}</span>
+          <span class="overall-stat-label">Vollständig</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.incomplete_controls ?? 0 }}</span>
+          <span class="overall-stat-label">Unvollständig</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ achievedPointsDisplay }}</span>
+          <span class="overall-stat-label">Punktestand (erreicht / max.)</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ ratedPercentage }}</span>
+          <span class="overall-stat-label">Bewertungsquote (nur bewertete)</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.zero_not_implemented ?? 0 }}</span>
+          <span class="overall-stat-label">Explizit MIL 0 (Not Implemented)</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.zero_not_rated ?? 0 }}</span>
+          <span class="overall-stat-label">0 Punkte (nicht bewertet)</span>
+        </div>
+        <div class="overall-stat">
+          <span class="overall-stat-value">{{ coverage?.unanswered_questions ?? 0 }}</span>
+          <span class="overall-stat-label">Nicht bewertete Fragen</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · Domänenübersicht -->
+    <section class="summary-card section-card">
+      <div class="section-head">
+        <div>
+          <p class="card-kicker">3 · Domänenübersicht</p>
+          <h2>{{ totalDomains }} Domänen ausgewertet</h2>
+        </div>
+      </div>
+
       <div class="domain-list" *ngIf="domains.length; else noDomains">
         <article class="domain-card" *ngFor="let domain of domains; trackBy: trackByDomain">
           <div class="domain-card-head">
             <div>
               <h3>{{ domain.domain }}</h3>
-              <p>{{ domain.rated_controls }} bewertete Controls</p>
+              <p>{{ domain.rated_controls }} von {{ domain.total_controls }} Controls bewertet
+                · {{ domain.complete_controls }} vollständig</p>
             </div>
 
             <span class="domain-badge">
-              {{ formatAverage(domain.avg_mil_level) }}
+              {{ formatAverage(domain.avg_mil_level) }} MIL
             </span>
           </div>
 
           <div class="domain-stats">
-            <span>{{ formatPercentage(domain.percentage) }}</span>
+            <span>{{ formatPercentage(domain.percentage) }} Reifegrad</span>
             <span>{{ domain.achieved_points }} / {{ domain.max_points }} Punkte</span>
           </div>
 
@@ -115,6 +206,31 @@
               [style.width]="domain.percentage !== null ? domain.percentage + '%' : '0%'"
             ></div>
           </div>
+        </article>
+      </div>
+
+      <ng-template #noDomains>
+        <p>Keine Domänendaten vorhanden.</p>
+      </ng-template>
+    </section>
+
+    <!-- 4 · Control-Details -->
+    <section class="summary-card section-card">
+      <div class="section-head">
+        <div>
+          <p class="card-kicker">4 · Control-Details</p>
+          <h2>Reifegrade, Vollständigkeit und Notizen je Control</h2>
+        </div>
+      </div>
+
+      <div class="domain-list" *ngIf="domains.length; else noControlDomains">
+        <article class="domain-card" *ngFor="let domain of domains; trackBy: trackByDomain">
+          <div class="domain-card-head">
+            <div>
+              <h3>{{ domain.domain }}</h3>
+              <p>{{ domain.rated_controls }} bewertete Controls</p>
+            </div>
+          </div>
 
           <div class="domain-controls" *ngIf="domain.controls.length">
             <div
@@ -122,46 +238,117 @@
               *ngFor="let control of domain.controls; trackBy: trackByControl"
             >
               <div class="domain-control-row">
-                <span class="control-id">{{ control.control_id }}</span>
+                <div class="control-main">
+                  <span class="control-id">{{ control.control_id }}</span>
+                  <span class="control-name">{{ control.control_name }}</span>
+                </div>
 
-                <div class="control-actions">
-                  <button
-                    type="button"
-                    class="note-toggle"
-                    *ngIf="control.has_note"
-                    (click)="toggleNote(control.control_id)"
+                <div class="control-meta">
+                  <span
+                    class="control-status-badge"
+                    [class.status-complete]="control.status === 'complete'"
+                    [class.status-incomplete]="control.status === 'incomplete'"
+                    [class.status-unrated]="control.status === 'unrated'"
                   >
-                    {{ isNoteExpanded(control.control_id) ? 'Notiz ausblenden' : 'Notiz anzeigen' }}
-                  </button>
+                    {{ statusLabel(control.status) }}
+                  </span>
 
-                  <button
-                    type="button"
-                    class="agent-action"
-                    *ngIf="control.has_note"
-                    [disabled]="getAgentState(control.control_id).isAnalyzing"
-                    (click)="analyzeNote(control)"
+                  <span class="control-mil" *ngIf="control.mil_level !== null">
+                    {{ controlMilDisplay(control) }}
+                  </span>
+                  <span class="control-mil muted" *ngIf="control.mil_level === null">
+                    MIL n/a
+                  </span>
+
+                  <span
+                    class="zero-badge"
+                    *ngIf="zeroReasonLabel(control)"
                   >
-                    {{
-                      getAgentState(control.control_id).isAnalyzing
-                        ? 'Analysiere ...'
-                        : (agentStateFor(control.control_id)?.proposal
-                            ? 'Notiz erneut analysieren'
-                            : 'Notiz mit Agent analysieren')
-                    }}
-                  </button>
-
-                  <span class="control-mil">
-                    {{ control.mil_label || formatMil(control.mil_level) }}
+                    {{ zeroReasonLabel(control) }}
                   </span>
                 </div>
+              </div>
+
+              <div class="control-progress" *ngIf="control.status !== 'unrated'">
+                <div class="control-progress-bar-track">
+                  <div
+                    class="control-progress-bar"
+                    [class.complete]="control.status === 'complete'"
+                    [style.width]="(completenessPercent(control) ?? 0) + '%'"
+                  ></div>
+                </div>
+                <span class="control-progress-label" *ngIf="control.expected_answer_count">
+                  {{ formatAnsweredCount(control) }} Antworten (erwartet: {{ control.expected_answer_count }}, bewertet: {{ control.answer_count }})
+                </span>
+              </div>
+
+              <div class="control-missing" *ngIf="control.missing_metrics.length">
+                <p class="missing-label">Nicht bewertete Fragen (Maturity Evaluator)</p>
+                <div class="missing-list">
+                  <span
+                    class="missing-chip"
+                    *ngFor="let metricRef of control.missing_metrics; trackBy: trackByMetricRef"
+                  >
+                    {{ metricRef.metric_name || metricRef.metric_id }}
+                    <span class="missing-chip-id" *ngIf="metricRef.metric_id">
+                      {{ metricRef.metric_id }}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="control-actions">
+                <button
+                  type="button"
+                  class="note-toggle"
+                  *ngIf="control.has_note"
+                  (click)="toggleNote(control.control_id)"
+                >
+                  {{ isNoteExpanded(control.control_id) ? 'Notiz ausblenden' : 'Notiz anzeigen' }}
+                </button>
+
+                <button
+                  type="button"
+                  class="agent-action"
+                  *ngIf="control.has_note"
+                  [disabled]="getAgentState(control.control_id).isAnalyzing"
+                  (click)="analyzeNote(control)"
+                >
+                  {{
+                    getAgentState(control.control_id).isAnalyzing
+                      ? 'Analysiere ...'
+                      : (agentStateFor(control.control_id)?.proposal
+                          ? 'Notiz erneut analysieren'
+                          : 'Notiz mit Agent analysieren')
+                  }}
+                </button>
               </div>
 
               <div
                 class="control-note"
                 *ngIf="control.has_note && isNoteExpanded(control.control_id)"
               >
-                <p class="note-label">Audit-Notiz</p>
-                <p class="note-text">{{ control.note }}</p>
+                <ng-container *ngIf="control.metric_notes.length; else legacyNote">
+                  <p class="note-label">Audit-Notizen (je Metrik)</p>
+                  <div
+                    class="metric-note"
+                    *ngFor="let metricNote of control.metric_notes"
+                  >
+                    <div class="metric-note-head">
+                      <span class="metric-note-name">
+                        {{ metricNote.metric_name || metricNote.metric_id }}
+                      </span>
+                      <span class="metric-note-id" *ngIf="metricNote.metric_id">
+                        {{ metricNote.metric_id }}
+                      </span>
+                    </div>
+                    <p class="note-text">{{ metricNote.note }}</p>
+                  </div>
+                </ng-container>
+                <ng-template #legacyNote>
+                  <p class="note-label">Audit-Notiz</p>
+                  <p class="note-text">{{ control.note }}</p>
+                </ng-template>
               </div>
 
               <ng-container *ngIf="agentStateFor(control.control_id) as agentState">
@@ -219,9 +406,86 @@
         </article>
       </div>
 
-      <ng-template #noDomains>
-        <p>Keine Domänendaten vorhanden.</p>
+      <ng-template #noControlDomains>
+        <p>Keine Control-Daten vorhanden.</p>
       </ng-template>
+    </section>
+
+    <!-- 5 · AI-Analysen & Freigaben -->
+    <section class="summary-card section-card" *ngIf="agentLogs.length">
+      <div class="section-head">
+        <div>
+          <p class="card-kicker">5 · AI-Analysen &amp; Freigaben</p>
+          <h2>Audit-Trail der Agent-Auswertungen</h2>
+        </div>
+      </div>
+
+      <div class="agent-log-list">
+        <article class="agent-log-entry" *ngFor="let log of agentLogs">
+          <div class="agent-log-head">
+            <div class="agent-log-title">
+              <span class="agent-badge">{{ log.agent_name }}</span>
+              <span class="agent-log-control">
+                {{ controlNameForLog(log.control_id) }}
+              </span>
+            </div>
+
+            <span
+              class="review-badge"
+              [class.review-proposed]="log.status === 'proposed'"
+              [class.review-accepted]="log.status === 'accepted'"
+              [class.review-rejected]="log.status === 'rejected'"
+            >
+              {{ reviewStatusLabel(log.status) }}
+            </span>
+          </div>
+
+          <pre class="agent-log-text">{{ log.output_text }}</pre>
+
+          <div class="agent-log-meta">
+            <span *ngIf="log.provider">Provider: {{ log.provider }}</span>
+            <span *ngIf="log.model">Modell: {{ log.model }}</span>
+            <span>Erstellt: {{ formatDate(log.created_at) }}</span>
+            <span *ngIf="log.reviewed_by">Reviewt durch: {{ log.reviewed_by }}</span>
+            <span *ngIf="log.reviewed_at">am {{ formatDate(log.reviewed_at) }}</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 6 · Methodik -->
+    <section class="summary-card section-card" *ngIf="methodology">
+      <div class="section-head">
+        <div>
+          <p class="card-kicker">6 · Methodik</p>
+          <h2>Berechnungs- und Einordnungsgrundlage</h2>
+        </div>
+      </div>
+
+      <div class="methodology-list">
+        <div class="methodology-item">
+          <h3>Reifegrad</h3>
+          <p>{{ methodology.reifegrad }}</p>
+        </div>
+        <div class="methodology-item">
+          <h3>Abdeckung</h3>
+          <p>{{ methodology.abdeckung }}</p>
+        </div>
+        <div class="methodology-item">
+          <h3>MIL-Level</h3>
+          <p>{{ methodology.mil_level }}</p>
+        </div>
+        <div class="methodology-item">
+          <h3>Null-Bewertungen</h3>
+          <p>{{ methodology.zero_differenzierung }}</p>
+        </div>
+      </div>
+
+      <div class="band-list">
+        <span class="band-chip" *ngFor="let band of methodology.maturity_bands">
+          MIL {{ band.mil }} – {{ band.label }}
+        </span>
+      </div>
     </section>
   </ng-container>
 </div>

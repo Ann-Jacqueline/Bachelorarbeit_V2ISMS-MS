@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/app.component.scss"],
-  "sourcesContent": [":host {\n  display: block;\n  min-height: 100vh;\n}\n\n.app-topbar {\n  position: absolute;\n  padding-top: 0.7rem;\n  right: 1.25rem;\n  left: 1.25rem;\n  display: flex;\n  justify-content: space-between;\n  align-items: flex-start;\n  z-index: 5000;\n  pointer-events: none;\n}\n\n.app-topbar-spacer {\n  flex: 1 1 auto;\n}\n\n.app-logo {\n  width: 300px;\n  max-width: 32vw;\n  min-width: 190px;\n  height: auto;\n  object-fit: contain;\n  pointer-events: auto;\n  display: block;\n  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.28));\n}\n\n@media (max-width: 900px) {\n  .app-topbar {\n    top: 0.65rem;\n    right: 0.85rem;\n    left: 0.85rem;\n  }\n\n  .app-logo {\n    width: 220px;\n    max-width: 46vw;\n    min-width: 150px;\n  }\n}\n"],
-  "mappings": ";AAAA;AACE,WAAA;AACA,cAAA;;AAGF,CAAA;AACE,YAAA;AACA,eAAA;AACA,SAAA;AACA,QAAA;AACA,WAAA;AACA,mBAAA;AACA,eAAA;AACA,WAAA;AACA,kBAAA;;AAGF,CAAA;AACE,QAAA,EAAA,EAAA;;AAGF,CAAA;AACE,SAAA;AACA,aAAA;AACA,aAAA;AACA,UAAA;AACA,cAAA;AACA,kBAAA;AACA,WAAA;AACA,UAAA,YAAA,EAAA,KAAA,KAAA,KAAA,CAAA,EAAA,CAAA,EAAA,CAAA,EAAA;;AAGF,QAAA,WAAA;AACE,GA5BF;AA6BI,SAAA;AACA,WAAA;AACA,UAAA;;AAGF,GAlBF;AAmBI,WAAA;AACA,eAAA;AACA,eAAA;;;",
-  "names": []
-}

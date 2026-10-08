@@ -309,23 +309,42 @@ export class MaturityAssessmentComponent implements OnInit {
   confirmSubmitAssessment(): void {
     this.persistDraftToSession();
 
-    const missingCount = this.totalMissingMetricCount;
-    const message =
-      missingCount > 0
-        ? `Es fehlen noch ${missingCount} Antworten im aktuellen Control. Diese werden automatisch mit 0 bewertet. Nach dem Absenden können die Antworten nicht mehr geändert werden. Assessment jetzt abschließen?`
-        : 'Nach dem Absenden können die Antworten nicht mehr geändert werden. Assessment jetzt abschließen?';
+    const incomplete = this.incompleteControls;
 
-    const confirmed = window.confirm(message);
-
-    if (!confirmed) {
+    if (incomplete.length === 0) {
+      this.submitAssessment(false);
       return;
     }
 
-    this.fillMissingAnswersWithZeroInCurrentControl();
-    this.submitAssessment();
+    const list = incomplete
+      .map((control) => `${control.control_id} (${control.answered}/${control.expected} beantwortet)`)
+      .join('\n');
+
+    const fillConfirmed = window.confirm(
+      'Folgende Controls sind unvollständig (bewertete Antworten / erwartete Metriken):\n\n' +
+        `${list}\n\n` +
+        'Diese fehlenden Antworten werden beim Übermitteln mit MIL 0 belegt ' +
+        '(„Not Implemented“) und die Controls als vollständig markiert.\n\n' +
+        'OK = mit Zero-Fill abschließen.\nAbbrechen = ohne Zero-Fill einreichen?'
+    );
+
+    if (fillConfirmed) {
+      this.submitAssessment(true);
+      return;
+    }
+
+    const withoutZeroConfirmed = window.confirm(
+      'Ohne Zero-Fill einreichen? Dann bleiben die Controls unvollständig markiert und die ' +
+        'fehlenden Antworten zählen mit 0 Punkten („nicht bewertet“).\n\n' +
+        'OK = trotzdem einreichen.\nAbbrechen = Vorgang abbrechen.'
+    );
+
+    if (withoutZeroConfirmed) {
+      this.submitAssessment(false);
+    }
   }
 
-  submitAssessment(): void {
+  submitAssessment(fillMissingWithZero = false): void {
     const sessionId = this.assessmentSessionService.ensureSession();
 
     if (this.selectedControlId) {
@@ -333,12 +352,13 @@ export class MaturityAssessmentComponent implements OnInit {
     }
 
     const payload = this.assessmentSessionService.buildFinalSubmissionPayload();
+    payload.fill_missing_with_zero = fillMissingWithZero;
 
     this.isSubmitting = true;
     this.errorMessage = null;
     this.saveMessage = null;
 
-   this.assessmentApiService.submitSession(sessionId, payload).subscribe({
+    this.assessmentApiService.submitSession(sessionId, payload).subscribe({
       next: () => {
         this.isSubmitting = false;
         this.router.navigate(['/assessment-summary']);
@@ -518,27 +538,6 @@ export class MaturityAssessmentComponent implements OnInit {
     this.assessmentSessionService.saveCurrentControlPacket(this.selectedControlId, completed);
   }
 
-  private fillMissingAnswersWithZeroInCurrentControl(): void {
-    if (!this.selectedControlId) {
-      return;
-    }
-
-    for (const metric of this.allMetrics) {
-      const existing = this.assessmentSessionService.getAnswer(metric.id);
-
-      if (!existing || existing.assessmentLevel === null) {
-        this.assessmentSessionService.saveAnswer(
-          this.selectedControlId,
-          metric.id,
-          0,
-          existing?.notes ?? ''
-        );
-      }
-    }
-
-    this.assessmentSessionService.saveCurrentControlPacket(this.selectedControlId, true);
-  }
-
   formatScore(score: number | null): string {
     if (score === null || Number.isNaN(score)) {
       return 'n/a';
@@ -632,14 +631,34 @@ export class MaturityAssessmentComponent implements OnInit {
     return currentIndex === this.controls.length - 1;
   }
 
-  get missingMetricsInCurrentControl(): CanvasMetricItem[] {
-    return this.allMetrics.filter((metric) => {
-      const answer = this.assessmentSessionService.getAnswer(metric.id);
-      return !answer || answer.assessmentLevel === null;
-    });
+  get incompleteControls(): Array<{
+    control_id: string;
+    answered: number;
+    expected: number;
+  }> {
+    return this.controls
+      .map((control) => {
+        const packet = this.assessmentSessionService
+          .getAllControlPackets()
+          .find((item) => item.controlId === control.control_id);
+
+        const answered =
+          packet?.answers.filter(
+            (answer) => answer.assessmentLevel !== null && answer.saved
+          ).length ?? 0;
+
+        return {
+          control_id: control.control_id,
+          answered,
+          expected: control.metric_count
+        };
+      })
+      .filter(
+        (control) => control.expected > 0 && control.answered < control.expected
+      );
   }
 
-  get totalMissingMetricCount(): number {
-    return this.missingMetricsInCurrentControl.length;
+  get totalIncompleteControlCount(): number {
+    return this.incompleteControls.length;
   }
 }

@@ -4,19 +4,17 @@
 }
 
 .app-topbar {
-  position: absolute;
-  padding-top: 0.7rem;
-  right: 1.25rem;
-  left: 1.25rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  position: sticky;
+  top: 0;
   z-index: 5000;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0.7rem 1.25rem 0.55rem;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   pointer-events: none;
-}
-
-.app-topbar-spacer {
-  flex: 1 1 auto;
 }
 
 .app-logo {
@@ -32,9 +30,7 @@
 
 @media (max-width: 900px) {
   .app-topbar {
-    top: 0.65rem;
-    right: 0.85rem;
-    left: 0.85rem;
+    padding: 0.55rem 0.85rem 0.45rem;
   }
 
   .app-logo {

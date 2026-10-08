@@ -1,6 +1,7 @@
 export interface ControlListItem {
   control_id: string;
   name: string;
+  metric_count: number;
 }
 
 export interface MetricTreeNode {

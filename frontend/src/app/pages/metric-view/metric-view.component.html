@@ -56,7 +56,14 @@
         Metric View wird geladen...
       </div>
 
-      <div *ngIf="!isLoading && metricTree" class="canvas-scene" #canvasScene>
+      <div
+        *ngIf="!isLoading && metricTree"
+        class="canvas-scene"
+        #canvasScene
+        [style.transform]="sceneTransform"
+        [style.transform-origin]="sceneTransformOrigin"
+        [style.minHeight.px]="sceneMinHeight"
+      >
         <svg class="scene-connections" preserveAspectRatio="none" aria-hidden="true">
           <path
             *ngIf="connectors.profile"

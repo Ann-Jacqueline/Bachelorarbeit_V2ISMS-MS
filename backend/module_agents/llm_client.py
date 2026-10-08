@@ -11,6 +11,7 @@ Der Mock-Provider erlaubt Entwicklung und Tests komplett ohne API-Key.
 """
 
 import os
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -37,20 +38,98 @@ class LLMClient(ABC):
 class MockLLMClient(LLMClient):
     """Platzhalter-Provider ohne API-Key.
 
-    Gibt eine deterministische, klar als Mock erkennbare Antwort zurück –
-    damit lassen sich Logging, Freigabe-Workflow und Endpoints
-    vollständig end-to-end testen, bevor ein echter Key vorliegt.
+    Liefert für den Notiz-Analyse-Prompt (NoteAnalyzerAgent) eine realistische,
+    strukturierte Analyse auf Basis des Notiztextes – damit lassen sich
+    Logging, Freigabe-Workflow und Endpoints vollständig end-to-end testen,
+    bevor ein echter Key vorliegt. Die Antwort bleibt klar als Mock erkennbar.
     """
 
     provider_name = "mock"
 
     def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        text = (
-            "[MOCK-ANTWORT – kein echtes LLM angebunden] "
-            f"System-Prompt ({len(system_prompt)} Zeichen) und "
-            f"User-Prompt ({len(user_prompt)} Zeichen) empfangen."
-        )
+        text = self._build_mock_response(user_prompt)
         return LLMResponse(text=text, model="mock-model", provider=self.provider_name)
+
+    def _build_mock_response(self, user_prompt: str) -> str:
+        note = self._extract_note(user_prompt)
+        if note is None:
+            return (
+                "[MOCK-ANTWORT – kein echtes LLM angebunden] "
+                f"System-Prompt ({len(user_prompt)} Zeichen) empfangen."
+            )
+
+        control = self._field(user_prompt, r"Control:\s*([^\n]+)")
+        domain = self._field(user_prompt, r"Domain:\s*([^\n]+)")
+        mil_level = self._field(user_prompt, r"MIL-Wert[^:]*:\s*([0-9.]+)")
+
+        lines = []
+        lines.append(self._mock_summary(control, domain, note))
+        lines.append("")
+        lines.append("**Belegte Sicherheitsaspekte:**")
+        aspects = self._mock_aspects(note)
+        lines.extend(aspects or ["- Keine konkreten Angaben in der Notiz."])
+        lines.append("")
+        lines.append("**Offene Punkte:**")
+        open_points = self._mock_open_points(note)
+        lines.extend(open_points or ["Keine erkennbar."])
+        if mil_level:
+            lines.append("")
+            lines.append(
+                f"(Kontextinformation: gewählter MIL-Wert {mil_level} – "
+                "wird vom Agenten bewusst nicht bewertet.)"
+            )
+        lines.append("")
+        lines.append(
+            "— [MOCK-Antwort, automatisch aus dem Notiztext erzeugt; "
+            "keine echte LLM-Auswertung.]"
+        )
+        return "\n".join(lines)
+
+    def _field(self, text: str, pattern: str) -> str | None:
+        match = re.search(pattern, text)
+        if not match:
+            return None
+        return match.group(1).strip()
+
+    def _extract_note(self, user_prompt: str) -> str | None:
+        match = re.search(r"Audit-Notiz:\s*\n?(.*)$", user_prompt, re.DOTALL)
+        return match.group(1).strip() if match else None
+
+    def _split_points(self, note: str, max_points: int = 4):
+        parts = re.split(r"[\n;•]", note)
+        points = [p.strip(" -.\t") for p in parts if p and p.strip(" -.\t")]
+        if not points:
+            sentences = [s.strip() for s in note.split(".") if s.strip()]
+            points = [s for s in sentences]
+        return points[:max_points]
+
+    def _mock_summary(self, control, domain, note) -> str:
+        first = self._split_points(note, 1)[0] if self._split_points(note, 1) else note
+        if len(first) > 140:
+            first = first[:140].rstrip() + " …"
+        context = control if control else "des Controls"
+        if domain:
+            context = f"{context} (Domain {domain})"
+        return (
+            f"**Zusammenfassung:** Die Audit-Notiz zu {context} beschreibt: "
+            f"„{first}“."
+        )
+
+    def _mock_aspects(self, note: str) -> list:
+        return [f"- {point}" for point in self._split_points(note, 4)]
+
+    def _mock_open_points(self, note: str) -> list:
+        hints = [
+            "offen", "geplant", "ausstehend", "noch ", "fehlt", "fehlend",
+            "unzureichend", "nicht umgesetzt", "kein ", "lücke", "Lücke",
+            "TODO", "ausstehend", "zu prüfen", "noch nicht",
+        ]
+        open_points = []
+        for point in self._split_points(note, 6):
+            lowered = point.lower()
+            if any(hint.lower() in lowered for hint in hints):
+                open_points.append(f"- {point}")
+        return open_points[:2]
 
 
 class OpenAIClient(LLMClient):
@@ -95,7 +174,6 @@ class DeepSeekClient(OpenAIClient):
             raise ValueError("DEEPSEEK_API_KEY ist nicht gesetzt.")
         self._client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
         self._model = model or self.default_model
-
 
 
 def create_llm_client() -> LLMClient:

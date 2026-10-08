@@ -1,9 +1,18 @@
+import json
 import uuid
 
-from module_maturity_evaluation.MIL_mapping import get_mil_label, validate_mil_level
+from module_maturity_evaluation.expected_metrics import get_expected_metric_ids
+from module_maturity_evaluation.MIL_mapping import (
+    get_mil_display_info,
+    validate_mil_level
+)
 from module_maturity_evaluation.rating_state import (
-    get_control_rating,
+    ensure_rating_schema,
     get_all_ratings_for_session,
+    get_control_catalog,
+    get_control_rating,
+    resolve_rating_status,
+    resolve_zero_reason,
     upsert_control_rating
 )
 from module_maturity_evaluation.score_aggregation import (
@@ -15,6 +24,7 @@ from module_maturity_evaluation.score_aggregation import (
 class MaturityService:
     def __init__(self, conn):
         self.conn = conn
+        ensure_rating_schema(conn)
 
     def create_session_response(self):
         session_id = f"sess_{uuid.uuid4().hex[:12]}"
@@ -97,6 +107,8 @@ class MaturityService:
 
         mil_level = rating["mil_level"] if rating else None
         note = rating["note"] if rating else None
+        rating_status = resolve_rating_status(rating)
+        display_info = get_mil_display_info(mil_level)
 
         return {
             "status": "success",
@@ -130,7 +142,14 @@ class MaturityService:
                 ],
                 "rating": {
                     "mil_level": mil_level,
-                    "mil_label": get_mil_label(mil_level) if mil_level is not None else None,
+                    "mil_label": display_info["mil_label"],
+                    "mil_display": display_info["mil_display"],
+                    "mil_labels": display_info["mil_labels"],
+                    "mil_band": display_info["mil_band"],
+                    "status": rating_status,
+                    "zero_reason": resolve_zero_reason(rating),
+                    "answer_count": rating["answer_count"] if rating else None,
+                    "expected_answer_count": rating["expected_answer_count"] if rating else None,
                     "note": note
                 }
             }
@@ -193,7 +212,7 @@ class MaturityService:
                 if isinstance(mil_level, bool):
                     raise ValueError("Ungültiger MIL-Level. Erlaubt sind nur 0, 1, 2 oder 3.")
                 mil_level = float(mil_level)
-                validate_mil_level(int(mil_level))
+                validate_mil_level(mil_level)
         except (TypeError, ValueError) as exc:
             return {
                 "status": "error",
@@ -221,6 +240,7 @@ class MaturityService:
         self.conn.commit()
 
         saved = get_control_rating(self.conn, session_id, control_id)
+        saved_display = get_mil_display_info(saved["mil_level"] if saved else None)
 
         return {
             "status": "success",
@@ -230,9 +250,10 @@ class MaturityService:
                 "control_id": control_id,
                 "control_name": control["name"],
                 "domain": control["domain"],
-                "mil_level": saved["mil_level"],
-                "mil_label": get_mil_label(int(round(saved["mil_level"]))) if saved["mil_level"] is not None else None,
-                "note": saved["note"]
+                "mil_level": saved["mil_level"] if saved else None,
+                "mil_label": saved_display["mil_label"],
+                "mil_display": saved_display["mil_display"],
+                "note": saved["note"] if saved else None
             }
         }
 
@@ -253,18 +274,14 @@ class MaturityService:
                 "data": None
             }
 
-        total_controls_row = self.conn.execute(
-            """
-            select count(*) as total_controls
-            from control_profil
-            """
-        ).fetchone()
-
-        total_controls = total_controls_row["total_controls"] if total_controls_row else 0
-
+        control_catalog = get_control_catalog(self.conn)
         ratings = get_all_ratings_for_session(self.conn, session_id)
-        domain_summary = build_domain_summary(ratings)
-        overall_summary = build_overall_summary(ratings, total_controls)
+        domain_summary = build_domain_summary(ratings, control_catalog)
+        overall_summary = build_overall_summary(
+            ratings,
+            total_controls=len(control_catalog),
+            control_catalog=control_catalog
+        )
 
         return {
             "status": "success",
@@ -358,6 +375,7 @@ class MaturityService:
             }
 
         controls = payload.get("controls")
+        fill_missing_with_zero = bool(payload.get("fill_missing_with_zero", False))
 
         if not isinstance(controls, list) or not controls:
             return {
@@ -368,6 +386,13 @@ class MaturityService:
 
         processed_controls = []
         processed_answers = 0
+
+        metric_names = {
+            row["metric_id"]: row["name"]
+            for row in self.conn.execute(
+                "select metric_id, name from metric_profile"
+            )
+        }
 
         for control_packet in controls:
             if not isinstance(control_packet, dict):
@@ -410,8 +435,28 @@ class MaturityService:
                     "data": None
                 }
 
+            expected_metric_ids = get_expected_metric_ids(self.conn, control_id)
+
+            answered_metric_ids = {
+                answer.get("metric_id")
+                for answer in answers
+                if isinstance(answer, dict) and answer.get("metric_id")
+            }
+
+            fill_count = 0
+            if fill_missing_with_zero and expected_metric_ids:
+                for metric_id in expected_metric_ids:
+                    if metric_id not in answered_metric_ids:
+                        answers.append({
+                            "metric_id": metric_id,
+                            "assessment_level": 0,
+                            "notes": None
+                        })
+                        fill_count += 1
+
             normalized_levels = []
             final_note_parts = []
+            metric_notes = []
 
             for answer in answers:
                 if not isinstance(answer, dict):
@@ -421,6 +466,7 @@ class MaturityService:
                         "data": None
                     }
 
+                metric_id = answer.get("metric_id")
                 assessment_level = answer.get("assessment_level", 0)
                 note = answer.get("notes")
 
@@ -451,6 +497,12 @@ class MaturityService:
                     note = note.strip()
                     if note:
                         final_note_parts.append(note)
+                        if metric_id:
+                            metric_notes.append({
+                                "metric_id": str(metric_id),
+                                "metric_name": metric_names.get(str(metric_id)),
+                                "note": note
+                            })
 
                 normalized_levels.append(assessment_level)
                 processed_answers += 1
@@ -462,6 +514,32 @@ class MaturityService:
             )
 
             final_note = "\n\n".join(final_note_parts) if final_note_parts else None
+            metric_notes_json = (
+                json.dumps(metric_notes, ensure_ascii=False)
+                if metric_notes
+                else None
+            )
+
+            missing_metrics = [
+                {
+                    "metric_id": metric_id,
+                    "metric_name": metric_names.get(metric_id)
+                }
+                for metric_id in expected_metric_ids
+                if metric_id not in answered_metric_ids
+            ]
+            missing_metrics_json = (
+                json.dumps(missing_metrics, ensure_ascii=False)
+                if missing_metrics
+                else None
+            )
+
+            answer_count = len(normalized_levels) - fill_count
+            expected_count = len(expected_metric_ids)
+            if expected_count > 0:
+                is_complete = answer_count >= expected_count
+            else:
+                is_complete = True
 
             upsert_control_rating(
                 conn=self.conn,
@@ -469,16 +547,29 @@ class MaturityService:
                 control_id=control_id,
                 domain=control["domain"],
                 mil_level=final_mil_level,
-                note=final_note
+                note=final_note,
+                answer_count=answer_count,
+                expected_answer_count=expected_count,
+                is_complete=1 if is_complete else 0,
+                metric_notes=metric_notes_json,
+                missing_metrics=missing_metrics_json
             )
+
+            rating_row = get_control_rating(self.conn, session_id, control_id)
+            display_info = get_mil_display_info(final_mil_level)
 
             processed_controls.append({
                 "control_id": control_id,
                 "control_name": control["name"],
                 "domain": control["domain"],
                 "mil_level": final_mil_level,
-                "mil_label": f"MIL {final_mil_level:.2f}" if final_mil_level is not None else None,
-                "answer_count": len(answers)
+                "mil_label": display_info["mil_label"],
+                "mil_display": display_info["mil_display"],
+                "status": resolve_rating_status(rating_row),
+                "zero_reason": resolve_zero_reason(rating_row),
+                "answer_count": answer_count,
+                "expected_answer_count": expected_count,
+                "missing_metrics": missing_metrics
             })
 
         self.conn.execute(
@@ -492,18 +583,14 @@ class MaturityService:
         )
         self.conn.commit()
 
-        total_controls_row = self.conn.execute(
-            """
-            select count(*) as total_controls
-            from control_profil
-            """
-        ).fetchone()
-
-        total_controls = total_controls_row["total_controls"] if total_controls_row else 0
-
+        control_catalog = get_control_catalog(self.conn)
         ratings = get_all_ratings_for_session(self.conn, session_id)
-        domain_summary = build_domain_summary(ratings)
-        overall_summary = build_overall_summary(ratings, total_controls)
+        domain_summary = build_domain_summary(ratings, control_catalog)
+        overall_summary = build_overall_summary(
+            ratings,
+            total_controls=len(control_catalog),
+            control_catalog=control_catalog
+        )
 
         return {
             "status": "success",
