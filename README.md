@@ -6,414 +6,477 @@ Webanwendung zur systematischen Bewertung des Reifegrads von Informationssicherh
 
 Das Projekt kombiniert ein **Angular-Frontend** mit einem **Flask-Backend** und stellt sowohl eine metrische Sicht auf einzelne Controls (Metric View) als auch einen geführten Maturity-Assessment-Workflow mit automatisierter Score-Berechnung bereit.
 
+> **Wichtiger Hinweis zum Projektstand:** Diese README dokumentiert **zwei Stände**. Abschnitt [1) STAND BACHELORARBEIT (Endzustand) – OUTDATED](#1-stand-bachelorarbeit-endzustand--outdated) beschreibt den ursprünglichen, rein deterministischen Prototyp. Abschnitt [2) STAND JETZT (Status Quo / aktueller Prototyp)](#2-stand-jetzt-status-quo--aktueller-prototyp) beschreibt den weiterentwickelten Stand inklusive der Transformation **von deterministisch → agentisch**.
+
 https://github.com/user-attachments/assets/4639b4ea-f0bf-4cd8-94fd-4605bd1a44ee
 
 ---
 
 ## Inhaltsverzeichnis
 
-1. [Motivation & Konzept](#motivation--konzept)
-2. [Architektur](#architektur)
-3. [Features](#features)
-4. [Technologie-Stack](#technologie-stack)
-5. [Projektstruktur](#projektstruktur)
-6. [Datenmodell (Kurzüberblick)](#datenmodell-kurzüberblick)
-7. [Voraussetzungen](#voraussetzungen)
-8. [Installation & Setup](#installation--setup)
-9. [Konfiguration](#konfiguration)
-10. [API-Dokumentation](#api-dokumentation)
-11. [Beispiel-Workflow (End-to-End)](#beispiel-workflow-end-to-end)
-12. [Entwicklung & Tests](#entwicklung--tests)
-13. [Bekannte Einschränkungen & Roadmap](#bekannte-einschränkungen--roadmap)
-14. [Lizenz](#lizenz)
-15. [Kontakt](#kontakt)
+1. [Motivation & Konzept](#1-motivation--konzept)
+2. [Architektur](#2-architektur)
+3. [Features](#3-features)
+4. [Technologie-Stack](#4-technologie-stack)
+5. [Projektstruktur](#5-projektstruktur)
+6. [Datenmodell (Kurzüberblick)](#6-datenmodell-kurzüberblick)
+7. [Voraussetzungen](#7-voraussetzungen)
+8. [Installation & Setup](#8-installation--setup)
+9. [Konfiguration](#9-konfiguration)
+10. [API-Dokumentation](#10-api-dokumentation)
+11. [Beispiel-Workflow (End-to-End)](#11-beispiel-workflow-end-to-end)
+12. [Entwicklung & Tests](#12-entwicklung--tests)
+13. [Bekannte Einschränkungen & Roadmap](#13-bekannte-einschränkungen--roadmap)
+14. [Lizenz](#14-lizenz)
+15. [Kontakt](#15-kontakt)
 
 ---
 
-## Motivation & Konzept
+## 1. Motivation & Konzept
 
-ISO/IEC 27001 Annex A definiert 93 Controls, deren Umsetzungsgrad in der Praxis meist nur binär ("umgesetzt" / "nicht umgesetzt") oder anhand grober Selbsteinschätzungen bewertet wird. Audits nach ISO/IEC 17021 liefern dabei selten eine transparente, nachvollziehbare Herleitung des tatsächlichen Reifegrads einzelner Controls.
+### 1.1 Ausgangsproblem
 
-Der **V²ISMS-MS-Ansatz** (Verification & Validation-based ISMS Maturity System) begegnet diesem Problem, indem er jedes Control mit einem Satz aus **Verifikationsmetriken** (technische, messbare Nachweise) und **Validierungsmetriken** (organisatorische, prozessuale Nachweise) verknüpft. Aus der Kombination beider Metrikarten sowie zugehöriger Evidenzen wird pro Control ein **Maturity Indicator Level (MIL 0–3)** abgeleitet – angelehnt an das C2M2-Reifegradmodell (Cybersecurity Capability Maturity Model).
+Informationssicherheits-Audits nach ISO 27001 beantworten die Frage: *„Wie reif (mature) ist die Umsetzung eines bestimmten Sicherheits-Controls in einer Organisation – und welche Metriken helfen konkret bei der Implementierung der Control?"*
 
-Diese Web-App bildet die praktische Umsetzung des Frameworks ab und demonstriert:
+In der Praxis passiert ISMS-Reifegradbewertung heute meist **subjektiv**: Ein Auditor schätzt „gut/mittel/schlecht" ohne einheitliche, wiederholbare Metrik. V²ISMS-MS ersetzt dieses Bauchgefühl durch ein **standardisiertes Metrik-Modell**: Jedes Control wird mit konkreten, messbaren Metriken verknüpft, aus denen sich ein reproduzierbarer Reifegrad-Score (MIL – Maturity Indicator Level, 0–3) ableitet.
 
-- wie aus einem Control-Profil und einem Metric-Profil passende Metriken automatisiert zugeordnet werden (Decision Engine, Schicht 2 des Frameworks),
-- wie diese Zuordnung transparent und nachvollziehbar visualisiert wird (Metric View, Schicht 3),
-- wie ein Prüfer oder Auditor auf dieser Grundlage eine geführte Reifegradbewertung durchführt und aggregierte Scores auf Control-, Domain- und Gesamtebene erhält (Maturity Evaluator, Schicht 4).
+### 1.2 Die fünf Bausteine
 
-## Architektur
+1. **Control-/Metric-Katalog** – die Wissensbasis: welche ISO-27001-Controls existieren, welche Metriken passen zu welchem Control.
+2. **Decision Engine** – ordnet automatisch Metriken zu Controls zu (per Namenskonvention/Regelwerk) und berechnet einen Fit-Score.
+3. **Metric View** – zeigt Auditor:innen die passenden Metriken samt Nachweisen (Evidenzen) transparent an.
+4. **Maturity Evaluator** – sammelt die Auditor-Antworten pro Control und berechnet daraus den finalen MIL-Score.
+5. **Summary View** – aggregiert alle MIL-Antworten zu einem Gesamtbericht: Gesamt-Score des ISMS sowie Gesamt-Score je Control-Domain.
 
-Die Anwendung folgt konzeptionell der vierschichtigen Architektur des V²ISMS-MS-Frameworks:
+### 1.3 Das Grundprinzip: Selbstauskunft statt Fremdbewertung
 
-| Schicht | Bezeichnung | Zweck | Entsprechung in der App |
+**Das System bewertet nicht selbst.** Es ist bewusst ein **Selbstauskunfts-Interface**, kein Auditor: Jede Metrik = eine Frage, der Mensch beantwortet sie mit seiner eigenen Einschätzung (MIL 0–3), das System aggregiert diese Antworten nur deterministisch zu Domain- und Gesamt-Scores. **Das soll so bleiben** – das ist keine Lücke, sondern ein Design-Prinzip.
+
+### 1.4 Was der deterministische Kern leistet
+
+- Zuverlässige, jederzeit reproduzierbare MIL-Score-Berechnung aus vordefinierten Metriken.
+- Automatische Vorfilterung, welche Metriken zu welchem Control gehören (per Namensmuster).
+- Fragebogen-Interface für die MIL-Selbstauskunft pro Metrik.
+- Aggregation der Nutzerantworten zu einem reproduzierbaren Gesamt-Score und Domain-Scores.
+- Nachvollziehbare, prüfbare Aggregationslogik – jeder Score lässt sich exakt zurückrechnen.
+- Persistente Verwaltung von Controls, Metriken, Evidenzen, Sessions in einer strukturierten Datenbank.
+
+### 1.5 Die drei Lücken, die den Wechsel zu Agentic AI motivieren
+
+- **Kein Verständnis von unstrukturiertem Text** – Freitext-Audit-Notizen werden gespeichert, aber nie inhaltlich ausgewertet.
+- **Keine Begründungstexte** – *warum* der Nutzer einen bestimmten MIL-Wert gewählt hat.
+- **Keine Flexibilität bei neuen/unüblich benannten Metriken** – die Zuordnung basiert auf starrem Namensmuster; passt der Name nicht exakt, wird die Metrik schlicht nicht gefunden, auch wenn sie inhaltlich passen würde.
+
+### 1.6 Warum überhaupt agentisch werden (deterministisch → agentisch)
+
+Nicht als Selbstzweck, sondern weil genau diese Lücken **prinzipiell nicht mit weiteren Regeln schließbar sind** – sie brauchen Sprachverständnis und Interpretation, nicht mehr If-Else. Zusatznutzen: Die für Agenten nötige Nachvollziehbarkeits-Infrastruktur (Logging jedes Bewertungsschritts) ist ohnehin etwas, das ein Audit-Tool fachlich braucht.
+
+**Gegenrechnung:** ~80 % des Aufwands einer Agenten-Einführung fließt laut Referenzmaterial (Google-Whitepaper zu Agents) in Security und Risk Mitigation, nicht in die „Intelligenz" selbst. Bei einem Audit-Tool ist ein falscher, unbelegter Score ein größeres Risiko als bei einem gewöhnlichen Chatbot – deshalb **nie ohne Sicherheitsnetz einführen**.
+
+### 1.6.1 Wo genau der Switch deterministisch → agentisch passiert
+
+Drei konkrete Übergangspunkte, sonst keine:
+
+- **Switch 1 – Kandidatensuche statt Namenskonvention:** Heute filtert `metric_belongs_to_control()` nur nach Substring-Muster im ID-Namen. Ein Agent schlägt stattdessen semantisch passende Metriken vor. **Sinnvoll, weil:** Vorschlagen ist schwer (Kreativität nötig), Prüfen ist leicht – die bestehende deterministische Scoring-Funktion verifiziert den Vorschlag sofort. *Der Agent erzeugt, der Code entscheidet.*
+- **Switch 2 – Freitext-Interpretation:** Audit-Notizen sind unstrukturierte Sprache – dafür gibt es keine deterministische Lösung, nur Fließtext-Speicherung. **Sinnvoll, weil:** Es ist reine Zusatzinformation (kein Score-Risiko), aktuell komplett brachliegender Wert.
+- **Switch 3 – Begründungstext & Analyse zu einer bereits vom Nutzer gewählten MIL-Antwort:** Der MIL-Wert selbst kommt und bleibt ausschließlich Selbstauskunft des Nutzers. **Erst danach** setzt der Agent an: Er formuliert eine nachvollziehbare Begründung, *warum* diese Antwort zur gewählten MIL-Stufe passt, und prüft diese gegen die Normanforderung – bevor ein Mensch sie final freigibt.
+
+> **Nirgends verschoben wird die Verantwortung für den eigentlichen MIL-Score** – weder an den Agenten noch an den deterministischen Code. Der Score ist und bleibt Selbstauskunft des Menschen. Das ist der entscheidende Unterschied zu einem „normalen" KI-Projekt: Agentic AI übernimmt ausschließlich Zusatzarbeit, Interpretation und nachträgliche Erklärung – niemals die Entscheidung selbst.
+
+### 1.6.2 Autonomiegrad – wo agentisch, wo nicht
+
+| Ort im System | Agentisch? | Grad | Begründung |
 |---|---|---|---|
-| 1 | Duale Profilbildung | Strukturierte Erfassung von Control-Profil (Kritikalität, Prüfbarkeit, Org-/Tech-Anteil …) und Metric-Profil | Backend-Datenmodell (`control_profile`, `metric_profile`) |
-| 2 | Decision Engine | Attributweiser Abgleich von Control- und Metric-Profil, Fit-Score-Berechnung, Filterung inkompatibler Metriken, Ranking | Backend-Businesslogik hinter `/api/metric-view` |
-| 3 | Metric View | Transparente, hierarchische Darstellung der zugeordneten Verifikations- und Validierungsmetriken inkl. Evidenzbasis | Angular-Modul `metric-view/` |
-| 4 | Maturity Evaluator | Geführte Bewertung je Control (MIL 0–3), Aggregation zu Domain- und Gesamt-Scores | Angular-Modul `maturity-assessment/` + `/api/maturity` |
+| Scoring-Kern (Formeln, Aggregation, MIL-Mapping) | **Nein, nie** | Level 0 | Aufgabe ist bereits vollständig algorithmisch gelöst – kein Interpretationsbedarf. |
+| Control-/Metric-Katalog (Onboarding neuer Normtexte) | Ja, punktuell | Level 1 (Berater) | Klassifikation von Fließtext ist Sprachaufgabe, heute manuell. |
+| Decision Engine (neue Kandidatensuche) | Ja, ergänzend | Level 2 (Reasoning + Tools) | Nur die Suche nach *neuen* Zuordnungen wird agentisch; die Bewertung bleibt deterministisch. |
+| Metric View (Evidenz-Auskunft) | Ja, begrenzt | Level 1 (Info-Abfrage) | Kein Entscheidungsrisiko, reine Auskunft. |
+| Maturity Evaluator (Freitext & Begründung) | Ja, größtes Potenzial | Level 2, mehrstufig | Größte ungenutzte Datenquelle, höchster Interpretationsbedarf. |
+| Übergreifende Steuerung mehrerer Normen | Noch nicht | Level 2 – erst bei Bedarf | Lohnt sich erst ab zweitem Framework, vorher Overengineering. |
 
-Technisch ist die App als klassische Client-Server-Anwendung mit getrennten Codebasen aufgebaut:
+**Wichtigster Punkt:** Der höchste jemals angestrebte Grad ist **Level 2** (Agent mit Tools, Vorschlagsrecht, kein Durchgriff). **Level 4 (voll autonom) ist für dieses System nirgends vorgesehen** – ein Audit-Tool ohne menschliche Letztentscheidung wäre nicht vertretbar.
 
-```
-┌────────────────────┐        REST/JSON        ┌──────────────────────┐
-│   Angular Frontend  │  <─────────────────────>│    Flask Backend      │
-│  (Port 4200, dev)   │      HttpClient          │   (Port 5000, dev)    │
-└────────────────────┘                          └──────────────────────┘
-                                                          │
-                                                          ▼
-                                              Control-/Metric-/Evidenz-
-                                              Datenbasis (SQL)
-```
+### 1.7 Wo es sich lohnt – wo nicht
 
-Das Frontend enthält keine Geschäftslogik zur Score-Berechnung – sämtliche Aggregationen (Fit-Score, MIL-Level, Domain-/Overall-Prozentwerte) werden serverseitig im Flask-Backend berechnet und dem Client als fertige JSON-Struktur bereitgestellt. Dies stellt sicher, dass die Bewertungslogik zentral, testbar und unabhängig vom UI-Layer bleibt.
+**Lohnt sich:**
 
-## Features
+- Freitext-Interpretation (größter ungenutzter Datenschatz, additiv, kein Score-Risiko) → bester erster Pilot.
+- Neue/unüblich benannte Metrik-Kandidaten vorschlagen (Agent schlägt vor, bestehender Code prüft – Vorschlagen ist schwer, Prüfen ist leicht).
+- Automatisch generierte Begründungs- oder Auswirkungstexte zu einem Score (heute: nur nackte Zahl).
 
-### Metric View
-- Hierarchischer Metrikbaum pro Control: Control → zugeordnete Verifikations-/Validierungsmetriken → Formeln/Messlogik → Evidenzarten → konkrete Evidenzen.
-- Automatisches Profil-Matching zwischen Control-Profil und Metric-Profil (Domain, Kritikalität, Prüfbarkeit, Org-/Tech-Anteil, Änderungsfrequenz) über die Decision Engine.
-- Übersichtliche Baumdarstellung im Frontend, die auch für fachfremde Auditoren nachvollziehbar sein soll (keine reine Datenbank-Ansicht).
+**Lohnt sich nicht (aktuell):**
 
-### Maturity-Assessment-Workflow
-- Session-basierter Ablauf: Eine Assessment-Session kapselt alle Bewertungen eines Durchlaufs und kann unabhängig von anderen Sessions parallel existieren.
-- Geführte Bewertung pro Control anhand definierter Assessment-Level (MIL 0–3) inkl. optionaler Freitext-Notizen je Antwort.
-- Zwischenspeicherung des Fortschritts über eine Summary-Abfrage, sodass der Bearbeitungsstand jederzeit eingesehen werden kann, ohne die Session abzuschließen.
-- Abschließendes "Submit", das die Session final validiert, den Status auf `completed` setzt und keine weiteren Änderungen mehr zulässt.
+- Vollautonome MIL-Vergabe ohne Nutzereingabe – explizit ausgeschlossen. Ein Agent darf eine Begründung zu einer *bereits vom Menschen getroffenen* Antwort liefern, aber niemals die Selbstauskunft-Antwort selbst setzen oder vorschlagen.
+- Den Scoring-Kern durch ein Modell zu ersetzen – bereits gelöst, würde nur Risiko ohne Zusatznutzen bringen.
+- Multi-Agenten-Orchestrierung über mehrere Normen – es gibt aktuell nur ein Framework.
 
-### Aggregation & Reporting
-- Automatische Berechnung von Ø-MIL-Level, erreichten/maximalen Punkten und Prozentwerten je Control.
-- Aggregation auf Domain-Ebene (z. B. `ACCESS`, `GOVERNANCE`, …) sowie eine konsolidierte Gesamt-Summary (`overall`).
-- Unterscheidung zwischen bewerteten (`rated_controls`) und noch offenen (`unrated_controls`) Controls, um den Bearbeitungsfortschritt sichtbar zu machen.
+### 1.8 Wer trägt welche Verantwortung
 
-### Technische Eigenschaften
-- Klar getrennte REST-API mit konsistenten JSON-Antwortstrukturen (`status` + `data`) für einfache Frontend-Integration und Testbarkeit.
-- Modularer Angular-Code: fachliche Trennung in `metric-view/` und `maturity-assessment/`, jeweils mit eigenen Services und Komponenten.
-- Schlankes, unabhängig lauffähiges Flask-Backend ohne Frontend-Kopplung – kann grundsätzlich auch von anderen Clients (CLI, andere UIs) angesprochen werden.
+| Rolle | Verantwortung |
+|---|---|
+| **Deterministischer Kern** | Bleibt einzige Quelle der Wahrheit für den finalen MIL-Score – unverändert, auditierbar. |
+| **Agent** | Nur Vorschlag/Beratung (Kandidaten, Begründungstext, Freitext-Auswertung) – kein Schreibzugriff ohne Freigabe. |
+| **Mensch (Auditor)** | Die Verantwortung für die **eigentliche MIL-Antwort pro Metrik** liegt und bleibt vollständig beim Menschen – ein Agent kommt frühestens *nach* der Eingabe ins Spiel, nie davor oder anstelle davon. |
+| **Qualitätsaufsicht (neue Rolle)** | Pflegt Testfälle, Absicherungsregeln und Protokolle – Priorität 1 ist immer Sicherheit. |
 
-## Technologie-Stack
+### 1.9 Fazit der Motivation
 
-| Bereich | Technologie | Zweck |
-|---|---|---|
-| Frontend-Framework | Angular (TypeScript) | Komponentenbasierte Single-Page-Application |
-| Reaktive Datenflüsse | RxJS | Observables für HTTP-Aufrufe und State-Handling in Services |
-| UI-Komponenten | Angular Material (optional) | Konsistente, barrierearme UI-Bausteine |
-| HTTP-Kommunikation | Angular `HttpClient` | Kommunikation mit der Flask-REST-API |
-| Backend-Framework | Python / Flask | Leichtgewichtiger REST-API-Server |
-| Schnittstellenformat | JSON | Einheitliches Austauschformat zwischen Frontend und Backend |
-| Datenhaltung | SQL-basierte Control-/Metric-/Evidenz-Tabellen | Persistenz der Profile, Metriken und Assessment-Sessions |
-| Tests Frontend | Angular CLI / Karma / Jasmine (Standard-Toolchain) | Unit-Tests für Komponenten und Services |
-| Tests Backend | pytest (bzw. vergleichbares Framework) | Unit-/Integrationstests für API-Routen und Businesslogik |
+V²ISMS-MS funktioniert wie ein zuverlässiger Taschenrechner mit festen Formeln – gut für das, wofür er gebaut wurde, aber blind für alles außerhalb starrer Namensmuster und Zahlen. Agentic AI wird **nicht** eingeführt, um den Taschenrechner zu ersetzen, sondern um ihm an drei klar begrenzten Stellen (Freitext, neue Kandidaten, Begründungstext) ein Sprachverständnis zur Seite zu stellen – immer mit dem Menschen als letzter Instanz.
 
-## Projektstruktur
+---
+
+## 2. Architektur
+
+Client-Server-Architektur mit getrennter Codebasis:
+
+**Backend (Flask/Python/SQLite)**
+- **Control-/Metric-Katalog** – Wissensbasis der Controls und Metriken.
+- **Decision Engine** – regelbasierte Zuordnung von Metriken zu Controls (Fit-Score).
+- **Maturity Evaluator** – sammelt Antworten, berechnet MIL-Scores, persistiert pro-Metrik-Notizen und fehlende Metriken.
+- **Report-Service** – erzeugt Executive Summary sowie Markdown-, PDF- und JSON-Exporte.
+- **Agent-Layer (ergänzend)** – LLM-Client (Mock/DeepSeek/OpenAI/Anthropic), NoteAnalyzerAgent, Agent-Logging und Review-Workflow.
+
+**Frontend (Angular/TypeScript)**
+- **Metric View** – transparente Darstellung zugeordneter Metriken inkl. Evidenzen.
+- **Maturity Assessment** – geführter Fragebogen-Workflow pro Control (MIL 0–3) inkl. optionaler Notizen pro Metrik.
+- **Summary Review** – aggregierte Auswertung inkl. „Audit-Notizen", „Nicht bewertete Fragen" und Agent-Audit-Trail.
 
 ```
-.
-├── frontend/                          # Angular-Anwendung
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── metric-view/           # Metric View: Komponenten, Services, Modelle
-│   │   │   │   ├── metric-view.component.ts
-│   │   │   │   ├── metric-view.service.ts
-│   │   │   │   └── models/            # z. B. MetricTreeNode-Interfaces
-│   │   │   ├── maturity-assessment/   # Maturity-Assessment: Komponenten, Services, Modelle
-│   │   │   │   ├── session/           # Session-Erstellung, -Fortschritt, -Abschluss
-│   │   │   │   ├── control-rating/    # Bewertungs-UI je Control
-│   │   │   │   └── summary/           # Domain-/Overall-Score-Ansicht
-│   │   │   └── shared/                # geteilte Komponenten, Pipes, Utilities
-│   │   ├── assets/                    # statische Assets (Icons, Styles)
-│   │   └── environments/              # Umgebungskonfiguration (API-Base-URL etc.)
-│   ├── angular.json
-│   └── package.json
-├── backend/                            # Flask-Anwendung
-│   ├── api/
-│   │   ├── controls_routes.py         # REST-Routen unter /api (Controls, Metric View)
-│   │   └── maturity_routes.py         # REST-Routen unter /api/maturity
-│   ├── services/                      # Business-/Domänenlogik (Decision Engine, Scoring)
-│   ├── models/                        # Datenzugriffs-/ORM-Schicht
-│   ├── data/                          # Control-/Metric-/Evidenz-Datenbasis
-│   ├── app.py                         # Flask-Einstiegspunkt
-│   └── requirements.txt
-├── media/
-│   └── V2ISMSMS.mp4                   # Demo-Video
+┌────────────────────────────┐        REST (JSON)        ┌──────────────────────────────┐
+│        Angular Frontend     │  ───────────────────────▶ │        Flask Backend         │
+│  Metric View · Evaluator    │ ◀───────────────────────  │  Katalog · Decision Engine   │
+│  Summary Review             │                           │  Maturity · Report · Agents  │
+└────────────────────────────┘                           └──────────────┬───────────────┘
+                                                                        │
+                                                              ┌─────────▼──────────┐
+                                                              │   SQLite-Datenbank │
+                                                              └────────────────────┘
+```
+
+Die Score-/Aggregationslogik liegt vollständig serverseitig und ist deterministisch. Die Agenten-Schicht ist additiv und score-neutral; sie hat niemals Schreibzugriff auf MIL-Werte.
+
+---
+
+## 3. Features
+
+### 3.1 Deterministischer Kern
+
+- **Metric View:** hierarchischer Metrikbaum mit automatischem Profil-Matching über die Decision Engine.
+- **Maturity-Assessment-Workflow:** sessionbasiert, geführte Bewertung pro Control (MIL 0–3), optionale Freitext-Notizen, Submit schließt die Session ab (`completed`).
+- **Aggregation & Reporting:** Ø-MIL, Punkte und Prozent je Control/Domain/Gesamt inklusive Unterscheidung bewerteter/unbewerteter Controls.
+- **Konsistente REST-API:** einheitliches `{status, data}`-Antwortformat.
+
+### 3.2 Präzisere Maturity-Semantik
+
+- **Nur echte Antworten zählen:** `answer_count` = Anzahl tatsächlich beantworteter Metriken (ohne automatisch gefüllte Nullen).
+- **Vollständigkeit:** `is_complete = (answer_count >= expected_answer_count)`; `incomplete` = bewertet, aber nicht alle erwarteten Metriken beantwortet.
+- **0-Punkte-Differenzierung:** `zero_reason = not_implemented` (explizit MIL 0 für **alle** Metriken, vollständig bewertet) vs. `not_rated` (unbewertet **oder** unvollständig). `resolve_zero_reason` behandelt `incomplete` konsequent als `not_rated`.
+- **Pro-Metrik-Notizen:** `metric_notes` (JSON) speichert `{metric_id, metric_name, note}` je beantworteter Metrik; die zusammengeführte `note` bleibt für Backward-Kompatibilität erhalten.
+
+### 3.3 Nicht bewertete Fragen sichtbar machen
+
+- **`missing_metrics`** pro Control: erwartete minus tatsächlich beantwortete Metriken (`[{metric_id, metric_name}]`), auch bei `fill_missing_with_zero=true`.
+- **`coverage.unanswered_questions`**: sessionweite Aggregation aller nicht bewerteten Fragen.
+
+### 3.4 Reporting (Executive / Markdown / PDF / JSON / FE)
+
+- **Executive Summary:** enthält `coverage.unanswered_questions`, `executive.note_count` sowie Hinweise wie „X Fragen sind nicht bewertet und werden je Control als 'nicht bewertet' ausgewiesen" und „X Audit-Notizen (je Metrik) erfasst".
+- **Control-Details:** Abschnitte „Audit-Notizen (je Metrik)" und „Nicht bewertete Fragen (Maturity Evaluator)" je Control.
+- **Exports:** JSON/Markdown/PDF enthalten `metric_notes` und `missing_metrics`; PDF sanitisiert Sonderzeichen (z. B. `↔`), Report-Header ist sticky, Scale-to-fit für 1360×900.
+- **FE Summary-Review:** „Audit-Notizen"-Kachel, „Nicht bewertete Fragen"-Statistik, Control-Cards mit fehlenden Metriken als Chips und strukturierten Metrik-Notizen.
+
+### 3.5 Agents (ergänzend – nur Vorschlagsrecht)
+
+- **NoteAnalyzerAgent:** analysiert Audit-Notizen und erzeugt strukturierte Vorschläge (**Zusammenfassung**, **Belegte Sicherheitsaspekte**, **Offene Punkte**) – **niemals** einen MIL-Vorschlag oder eine Score-Änderung.
+- **Agent-Logging:** vollständige Nachvollziehbarkeit via `agent_log` mit `provider`, `model`, `output_text`, `status` (`proposed|accepted|rejected`), `reviewed_by`, `reviewed_at`, `control_id`, `session_id`.
+- **Review-Workflow:** Vorschläge müssen explizit akzeptiert/abgelehnt werden; nur freigegebene Logs erscheinen im Report („AI-Analysen (Agent-Audit-Trail)").
+- **LLM-Provider:** umschaltbar (`mock|deepseek|openai|anthropic`) – siehe [Konfiguration](#9-konfiguration).
+- **Realistischer Mock:** `MockLLMClient` erzeugt eine deutschsprachige, strukturierte Analyse allein aus dem Notiztext (klar als Mock markiert) – für Entwicklung und Tests ohne API-Key.
+
+---
+
+## 4. Technologie-Stack
+
+| Bereich | Technologie |
+|---|---|
+| Frontend | Angular 21 (TypeScript), Angular Material, RxJS, HttpClient |
+| Frontend-Tests | Karma / Jasmine |
+| Backend | Python 3.12, Flask, SQLite |
+| Backend-Tests | pytest |
+| Agenten/LLM | Provider-Adapter (Mock, DeepSeek, OpenAI, Anthropic), HTTP-Clients |
+| Build/Tooling | npm / Angular CLI, esbuild; virtuelle Python-Umgebung (`.venv`) |
+
+---
+
+## 5. Projektstruktur
+
+```
+Bachelorarbeit_V2ISMS-MS/
+├── backend/
+│   ├── app.py                          # Flask-App, lädt ../.env
+│   ├── module_controls/                # Control-Katalog
+│   ├── module_metrics/                 # Metrik-Katalog & Fit-Score
+│   ├── module_maturity_evaluation/
+│   │   ├── MaturityService.py          # Submit-Workflow (metric_notes, missing_metrics)
+│   │   ├── rating_state.py             # Migration, upsert, Zero-Semantik
+│   │   └── score_aggregation.py        # Aggregation, unanswered_questions
+│   ├── module_report/
+│   │   ├── ReportService.py            # Executive Summary, Orchestrierung
+│   │   ├── markdown_renderer.py
+│   │   ├── pdf_renderer.py
+│   │   └── json_exporter.py
+│   ├── module_agents/
+│   │   ├── llm_client.py               # MockLLMClient, DeepSeek/OpenAI/Anthropic
+│   │   ├── NoteAnalyzerAgent.py
+│   │   └── AgentService.py             # agent_log, Review-Workflow
+│   └── tests/                          # pytest (conftest, submit flow, report)
+├── frontend/
+│   └── src/app/
+│       ├── services/assessment-api.service.ts
+│       └── pages/assessment-summary-review/
+│           └── maturity-assessment/
+│               └── metric-view/
+├── .env                                # lokale Agent-Konfiguration (gitignored)
 └── README.md
 ```
 
-> Hinweis: Die genaue Benennung einzelner Unterordner kann je nach Ausbaustufe des Projekts leicht abweichen; die fachliche Trennung Metric View / Maturity Assessment auf Frontend-Seite sowie `/api` / `/api/maturity` auf Backend-Seite ist die maßgebliche Struktur.
+---
 
-## Datenmodell (Kurzüberblick)
+## 6. Datenmodell (Kurzüberblick)
 
-Fachlich basiert die Anwendung auf folgenden zentralen Entitäten:
+Zentrale Tabellen (SQLite):
 
-- **`control_raw`** – Rohdaten eines ISO/IEC-27001-Controls (Control-ID, Normtext).
-- **`control_profile`** – strukturiertes Profil eines Controls (Kritikalität, Prüf-/Automatisierbarkeit, Org-/Tech-Anteil, Änderungsfrequenz, benötigte Evidenzarten).
-- **`metric_profile`** – gemeinsames Profil für Verifikations- und Validierungsmetriken, matchbar gegen `control_profile`.
-- **`verifikationsmetrik`** / **`validierungsmetrik`** – konkrete Metriken je Control mit Formel/Messlogik und Beschreibung.
-- **`evidenzart`** / **`evidenzen`** – Klassifikation und konkrete Nachweise (Logs, Konfiguration, Dokumente, Interviews, Beobachtung), die einer Metrik zugeordnet sind.
+- **`control`** – ISO-27001-Controls (ID, Name, Domain).
+- **`metric_profile`** – Metriken inkl. `name` und Zuordnung zum Control.
+- **`control_maturity_rating`** – Bewertung je Session/Control:
+  - `note` – zusammengeführte Audit-Notiz (Legacy-kompatibel)
+  - `metric_notes` (JSON) – `[{metric_id, metric_name, note}]`
+  - `missing_metrics` (JSON) – `[{metric_id, metric_name}]`
+  - `answer_count`, `expected_answer_count`, `is_complete`
+  - `zero_reason` (`not_implemented` | `not_rated`)
+- **`agent_log`** – Agent-Läufe:
+  - `agent_name`, `action`, `input_text`, `output_text`
+  - `provider`, `model`
+  - `status` (`proposed` | `accepted` | `rejected`)
+  - `control_id`, `session_id`, `created_at`, `reviewed_at`, `reviewed_by`
 
-Die Maturity-Assessment-Sessions referenzieren diese Basisdaten, ohne sie zu verändern – eine Session besteht aus Bewertungen (Assessment-Level je Control) zuzüglich der daraus abgeleiteten, serverseitig berechneten Scores.
+Die Migration `ensure_rating_schema` ergänzt fehlende Spalten idempotent; der In-Memory-Cache-Key ist pro Connection stabil (`<mem:{id(conn)}>`).
 
-## Voraussetzungen
+---
 
-- **Node.js** (empfohlen: aktuelle LTS-Version)
-- **npm** (wird mit Node.js installiert)
-- **Angular CLI** (`npm install -g @angular/cli`)
-- **Python 3.x**
-- **Flask** und weitere Python-Abhängigkeiten (siehe `backend/requirements.txt`)
-- Ein moderner Browser (Chrome, Firefox, Edge) für die Frontend-Nutzung
+## 7. Voraussetzungen
 
-## Installation & Setup
+- **Python** 3.12+
+- **Node.js** 20+ und **npm**
+- Optional: ein **DeepSeek/OpenAI/Anthropic API-Key** für echte LLM-Analysen (sonst läuft der Mock)
 
-### Backend (Flask)
+---
 
-1. In das Backend-Verzeichnis wechseln:
+## 8. Installation & Setup
 
-   ```bash
-   cd backend
-   ```
+### Backend
 
-2. Virtuelle Umgebung erstellen und aktivieren (empfohlen, um Abhängigkeiten zu isolieren):
-
-   ```bash
-   python -m venv venv
-   source venv/bin/activate    # Windows: venv\Scripts\activate
-   ```
-
-3. Abhängigkeiten installieren:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Flask-Server im Entwicklungsmodus starten:
-
-   ```bash
-   flask run
-   ```
-
-   Der Server lauscht standardmäßig auf `http://127.0.0.1:5000/`. Für automatisches Neuladen bei Codeänderungen kann zusätzlich der Debug-Modus aktiviert werden:
-
-   ```bash
-   flask --app app run --debug
-   ```
-
-5. Funktionscheck: Ein Aufruf von `GET http://127.0.0.1:5000/api/controls` sollte eine JSON-Antwort mit `status: "success"` liefern.
-
-### Frontend (Angular)
-
-1. In das Frontend-Verzeichnis wechseln:
-
-   ```bash
-   cd frontend
-   ```
-
-2. Abhängigkeiten installieren:
-
-   ```bash
-   npm install
-   ```
-
-3. Angular-Entwicklungsserver starten:
-
-   ```bash
-   ng serve
-   ```
-
-4. Die App im Browser öffnen:
-
-   ```text
-   http://localhost:4200
-   ```
-
-Das Frontend erwartet das Backend standardmäßig unter `http://127.0.0.1:5000/api` bzw. `http://127.0.0.1:5000/api/maturity`. Die Basis-URL ist in der Regel in `frontend/src/environments/environment.ts` (Entwicklung) bzw. `environment.prod.ts` (Produktion) hinterlegt und kann dort bei Bedarf angepasst werden.
-
-### Troubleshooting
-
-| Problem | Mögliche Ursache | Lösung |
-|---|---|---|
-| Frontend zeigt keine Daten / CORS-Fehler in der Konsole | Backend läuft nicht oder auf abweichendem Port | Backend-Status prüfen, Port in `environment.ts` abgleichen, ggf. CORS im Flask-Backend aktivieren |
-| `flask run` schlägt fehl | `FLASK_APP` nicht gesetzt oder virtuelle Umgebung nicht aktiv | `venv` aktivieren, `FLASK_APP=app.py` setzen bzw. `flask --app app run` verwenden |
-| `ng serve` bricht mit Abhängigkeitsfehlern ab | Node-/npm-Version zu alt oder `node_modules` inkonsistent | Aktuelle Node-LTS-Version verwenden, `node_modules` löschen und `npm install` erneut ausführen |
-| Session-Submit liefert Validierungsfehler | Nicht alle Controls der Session bewertet | Summary-Endpunkt prüfen (`unrated_controls`) und offene Bewertungen ergänzen |
-
-## Konfiguration
-
-Typische Konfigurationsparameter, die je nach Umgebung angepasst werden können:
-
-| Parameter | Ort | Beschreibung |
-|---|---|---|
-| API-Basis-URL | `frontend/src/environments/environment*.ts` | Ziel-URL des Backends, die der Angular-Client verwendet |
-| Server-Port (Backend) | Startbefehl (`flask run --port <PORT>`) oder `app.py` | Port, auf dem der Flask-Server lauscht (Standard: 5000) |
-| Server-Port (Frontend) | `ng serve --port <PORT>` | Port des Angular-Dev-Servers (Standard: 4200) |
-| Datenbankanbindung | Backend-Konfiguration/`.env` | Verbindungsparameter zur Control-/Metric-/Evidenz-Datenbasis |
-
-## API-Dokumentation
-
-Alle Antworten folgen dem einheitlichen Muster `{ "status": "success" | "error", "data": ... }`. Im Fehlerfall wird zusätzlich eine aussagekräftige Fehlermeldung mitgeliefert.
-
-### Metric View API (`/api`)
-
-**Controls-Liste laden**
-
-```http
-GET /api/controls
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+python backend\app.py
 ```
 
-Beispiel-Antwort:
+### Frontend
 
-```json
-{
-  "status": "success",
-  "data": [
-    { "control_id": "5.12", "name": "Klassifizierung von Informationen" },
-    { "control_id": "6.3",  "name": "Informationssicherheitsbewusstsein, -ausbildung und -schulung" },
-    { "control_id": "8.3",  "name": "Informationszugangsbeschränkung" }
-  ]
-}
-```
-
-**Metric View für ein Control laden**
-
-```http
-GET /api/metric-view/control/{controlId}
-```
-
-Liefert einen hierarchischen Metrikbaum (`MetricTreeNode`), der von der Angular-`MetricViewComponent` rekursiv visualisiert wird. Jeder Knoten enthält u. a.:
-
-- den Metriktyp (Verifikation/Validierung),
-- Formel bzw. Messlogik,
-- zugeordnete Evidenzarten und konkrete Evidenzen.
-
-### Maturity API (`/api/maturity`)
-
-**Session anlegen**
-
-```http
-POST /api/maturity/session
-```
-
-Legt eine neue Assessment-Session an und liefert deren eindeutige ID.
-
-```json
-{
-  "status": "success",
-  "data": {
-    "session_id": "assessment-20260729-xyz123",
-    "status": "active"
-  }
-}
-```
-
-**Session-Summary abrufen**
-
-```http
-GET /api/maturity/session/{sessionId}/summary
-```
-
-Liefert den aktuellen Bearbeitungsstand inklusive aggregierter Scores, ohne die Session abzuschließen – ideal, um einen Zwischenstand anzuzeigen.
-
-```json
-{
-  "status": "success",
-  "data": {
-    "session_id": "assessment-20260729-xyz123",
-    "status": "active",
-    "overall": {
-      "rated_controls": 3,
-      "unrated_controls": 0,
-      "avg_mil_level": 2.33,
-      "achieved_points": 7,
-      "max_points": 9,
-      "percentage": 77.8
-    },
-    "domains": [
-      {
-        "domain": "ACCESS",
-        "rated_controls": 3,
-        "avg_mil_level": 2.33,
-        "achieved_points": 7,
-        "max_points": 9,
-        "percentage": 77.8
-      }
-    ]
-  }
-}
-```
-
-**Session final abschließen**
-
-```http
-POST /api/maturity/session/{sessionId}/submit
-```
-
-Request-Body (vereinfacht):
-
-```json
-{
-  "controls": [
-    {
-      "control_id": "5.12",
-      "answers": [
-        { "assessment_level": 2, "notes": "Automatisierte Log-Auswertung vorhanden, manuelle Review noch unregelmäßig." }
-      ]
-    }
-  ]
-}
-```
-
-Antwort: `SubmitSessionResponseData` mit finalem Status `completed` sowie einer Summary pro Control. Nach erfolgreichem Submit gilt die Session als abgeschlossen und ist read-only.
-
-## Beispiel-Workflow (End-to-End)
-
-Ein typischer Durchlauf durch die Anwendung sieht wie folgt aus:
-
-1. **Metric View erkunden** – Über `GET /api/controls` werden alle verfügbaren Controls geladen. Für ein ausgewähltes Control liefert `GET /api/metric-view/control/{controlId}` die zugeordneten Verifikations- und Validierungsmetriken samt Evidenzbasis.
-2. **Session starten** – `POST /api/maturity/session` erzeugt eine neue Assessment-Session mit Status `active`.
-3. **Controls bewerten** – Für jedes zu bewertende Control wird ein Assessment-Level (MIL 0–3) inklusive optionaler Notizen erfasst; der Fortschritt lässt sich jederzeit über `GET /api/maturity/session/{sessionId}/summary` einsehen.
-4. **Session abschließen** – Sobald alle relevanten Controls bewertet sind, wird die Session über `POST /api/maturity/session/{sessionId}/submit` final abgeschlossen. Die Antwort enthält die konsolidierten Domain- und Overall-Scores.
-5. **Ergebnisse interpretieren** – Die aggregierten Prozentwerte und MIL-Level je Domain geben Auskunft darüber, in welchen Bereichen des ISMS Nachbesserungsbedarf besteht.
-
-## Entwicklung & Tests
-
-**Frontend-Tests** (Angular CLI, Standard-Toolchain mit Karma/Jasmine):
-
-```bash
+```powershell
 cd frontend
+npm install
+npm start        # ng serve
+```
+
+Standard-URLs: Frontend `http://localhost:4200`, Backend `http://localhost:5000`.
+
+---
+
+## 9. Konfiguration
+
+Die Agent-Konfiguration erfolgt über eine `.env`-Datei im Projektroot (durch `.gitignore` ausgeschlossen; wird von `backend/app.py` aus `../.env` geladen):
+
+```env
+AGENT_LLM_PROVIDER=deepseek        # mock | deepseek | openai | anthropic
+DEEPSEEK_API_KEY=sk-...
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+```
+
+- Default ist `mock`: `MockLLMClient` liefert realistische, deutschsprachige Analysen ohne API-Key.
+- Für echte Analysen `AGENT_LLM_PROVIDER` auf den gewünschten Provider setzen und den passenden Key hinterlegen.
+- **Wichtig:** `.env` enthält Secrets und darf **niemals** committet werden.
+
+---
+
+## 10. API-Dokumentation
+
+Alle Endpunkte antworten einheitlich mit `{ "status": "ok|error", "data": ... }`.
+
+### Katalog & Metriken
+
+| Methode | Pfad | Beschreibung |
+|---|---|---|
+| GET | `/api/controls` | Liste aller Controls |
+| GET | `/api/metrics/<control_id>` | Passende Metriken eines Controls (Decision Engine) |
+
+### Maturity Assessment
+
+| Methode | Endpoint | Beschreibung |
+|---|---|---|
+| POST | `/api/maturity/session` | Neue Assessment-Session anlegen |
+| POST | `/api/maturity/submit` | Antworten übermitteln; Response enthält `missing_metrics`, `answer_count`, `expected_answer_count`, `status`, `zero_reason` |
+| GET `/api/maturity/summary/<session_id>` | Session-Aggregation inkl. `metric_notes`, `missing_metrics`, `coverage.unanswered_questions`, `note_count` |
+
+### Report & Export
+
+| Methode | Endpunkt | Beschreibung |
+|---|---|---|
+| GET | `/api/report/<session_id>` | Strukturierter Report (Executive + Details) |
+| GET | `/api/report/<session_id>/markdown` | Markdown-Download |
+| GET | `/api/report/<session_id>/pdf` | PDF-Download |
+| GET | `/api/report/<session_id>/json` | JSON-Export (vollständiger Payload) |
+
+### Agents
+
+- `POST /agents/analyze` – NoteAnalyzerAgent ausführen (erzeugt `proposed`-Eintrag im `agent_log`).
+- `POST /agents/review` – Vorschlag akzeptieren/ablehnen (`accepted` | `rejected`).
+
+### 10.1 Ausführliche Beispiele
+
+#### `GET /api/controls`
+Liefert alle Controls des Katalogs.
+```json
+{ "status": "ok", "data": [ { "id": "5.12", "name": "...", "domain": "Organisatorische Controls" } ] }
+```
+
+#### `GET /api/metrics/<control_id>`
+Liefert die via Decision Engine zugeordneten Metriken samt Fit-Score.
+
+#### `POST /api/maturity/submit`
+
+Request (Auszug):
+
+```json
+{
+  "session_id": 12,
+  "control_id": "8.3",
+  "fill_missing_with_zero": false,
+  "answers": [
+    { "metric_id": "M-8.3-1", "metric_name": "Backup-Testfrequenz", "value": 2, "note": "Monatlicher Restore-Test" }
+  ]
+}
+```
+
+Response (Auszug):
+
+```json
+{
+  "status": "success",
+  "data": {
+    "answer_count": 6,
+    "expected_answer_count": 6,
+    "is_complete": true,
+    "zero_reason": null,
+    "metric_notes": [{ "metric_id": "M-8.3-1", "metric_name": "Backup-Testfrequenz", "note": "Monatlicher Restore-Test" }],
+    "missing_metrics": []
+  }
+}
+```
+
+#### Report-Endpunkte
+
+- `GET /report?format=json|markdown|pdf` bzw. die o. g. dedizierten Endpunkte liefern denselben Datenkern in unterschiedlichen Repräsentationen.
+- Freigegebene Agent-Analysen erscheinen im Abschnitt „AI-Analysen (Agent-Audit-Trail)".
+
+### 10.2 Agent-API
+
+#### `POST /api/agents/note-analyzer`
+
+Führt den `NoteAnalyzerAgent` für eine Bewertung aus und legt einen `proposed`-Eintrag in `agent_log` an.
+
+#### `POST /api/agents/review`
+
+Setzt den Status eines Vorschlags auf `accepted` oder `rejected`, inkl. `reviewed_by` und `reviewed_at`. Nur `accepted`-Einträge sind im Report sichtbar.
+
+---
+
+## 11. Beispiel-Workflow (End-to-End)
+
+1. **Session starten** – im Frontend ein neues Maturity-Assessment anlegen.
+2. **Control wählen** – z. B. `8.3` (Backup). Die Metric View zeigt die zugeordneten Metriken.
+3. **Metriken beantworten** – je Metrik MIL 0–3 wählen und optional eine Notiz hinterlegen.
+4. **Submit** – trifft der Auditor nicht alle erwarteten Metriken, werden diese als `missing_metrics` ausgewiesen; `zero_reason` differenziert `not_implemented` von `not_rated`.
+5. **Agent-Analyse (optional)** – NoteAnalyzerAgent erzeugt einen Vorschlag; dieser ist zunächst `proposed`.
+6. **Review** – der Vorschlag wird akzeptiert (`accepted`) oder abgelehnt (`rejected`).
+7. **Report** – Executive Summary (inkl. „nicht bewertete Fragen" und „Audit-Notizen je Metrik"), Domain-Details und der Agent-Audit-Trail werden als JSON/Markdown/PDF exportiert.
+
+---
+
+## 12. Entwicklung & Tests
+
+### Backend
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pytest backend\tests -q
+```
+
+Abgedeckt u. a.: Speicherung von `metric_notes` pro Metrik, Auflistung `missing_metrics` pro Control, Zero-Semantik bei `fill_missing_with_zero`, Renderer-Ausgabe (MD/JSON/PDF). Aktueller Stand: **45 Tests grün**.
+
+### Frontend
+
+```powershell
+cd frontend
+ng build
 ng test
 ```
 
-**Backend-Tests** (pytest oder vergleichbares Framework):
+Der Build läuft fehlerfrei; verbleibende Style-Budget-Warnungen betreffen ausschließlich `maturity-assessment.component.scss` und `metric-view.component.scss` (präexistent).
 
-```bash
-cd backend
-pytest
-```
+---
 
-Für Beiträge/Weiterentwicklung gilt:
+## 13. Bekannte Einschränkungen & Roadmap
 
-- Neue Backend-Routen sollten dem bestehenden Antwortformat (`status` + `data`) folgen.
-- Neue Frontend-Features werden nach Möglichkeit im passenden Fachmodul (`metric-view/` oder `maturity-assessment/`) ergänzt, um die modulare Trennung zu erhalten.
-- Änderungen an der Scoring-Logik (Fit-Score, MIL-Aggregation) sollten durch entsprechende Backend-Tests abgesichert werden, da sie die fachliche Kernaussage der Anwendung betreffen.
+### Aktuelle Einschränkungen
 
-## Bekannte Einschränkungen & Roadmap
+- Kein AuthN/AuthZ für Mehrbenutzer-Betrieb.
+- Switch 1 (semantische Metrik-Kandidatensuche) und Switch 3 (Begründungstext) sind konzeptionell vorgesehen, aber **noch nicht** implementiert – umgesetzt ist Switch 2 (Freitext-Interpretation) mit striktem Review.
+- Der Katalog deckt den Projekt-Scope ab (kein vollständiger Normen-Onboarding-Prozess).
+- Agenten-Ausgaben sind nur `proposed`-Vorschläge; ohne Review erscheinen sie nicht im Report.
 
-Da es sich um einen im Rahmen einer Bachelorarbeit entstandenen Forschungsprototyp handelt, bestehen aktuell folgende Einschränkungen:
+### Roadmap
 
-- Kein produktionsreifes Authentifizierungs-/Autorisierungskonzept für Mehrbenutzerbetrieb.
-- Die Datenbasis (Control-/Metric-Katalog) deckt den im Rahmen der Arbeit definierten Scope ab und ist nicht als vollständiger, offiziell zertifizierter ISO/IEC-27001-Metrikkatalog zu verstehen.
-- Persistenz und Skalierung sind auf den Nachweis des Konzepts ausgelegt, nicht auf produktiven Mehrmandantenbetrieb.
+1. **Switch 1** – semantische Kandidatensuche durch den Agenten, Verifikation durch den bestehenden deterministischen Scorer.
+- **Switch 3** – automatisch generierte Begründungs-/Auswirkungstexte zu bereits getroffenen MIL-Antworten (ausschließlich nach menschlicher Eingabe).
+- **AuthN/AuthZ** und rollenbasierte Rechte (inkl. Qualitätsaufsicht).
+- **Multi-Framework-Unterstützung** (erst ab zweitem Framework sinnvoll).
 
-Mögliche Erweiterungen für künftige Iterationen:
+---
 
-- Rollen- und Rechteverwaltung für mehrere Auditoren/Prüfer pro Session.
-- Export von Assessment-Ergebnissen (PDF/Excel) für Auditberichte.
-- Historisierung mehrerer Assessment-Durchläufe zur Reifegrad-Trendanalyse über die Zeit.
+## Anhang A: Stand Bachelorarbeit (Endzustand) – [OUTDATED]
 
-## Lizenz
+> Dieser Abschnitt dokumentiert den ursprünglichen, rein deterministischen Prototyp der Bachelorarbeit. Er ist aus historischen Gründen erhalten und beschreibt **nicht** den aktuellen Code.
 
-Dieses Projekt ist ausschließlich zu Demonstrations- und Forschungszwecken im Rahmen einer Bachelorarbeit gedacht. Die Nutzung des Prototyps für kommerzielle oder sonstige externe Zwecke ist nur nach vorheriger Absprache mit Ann-Jacqueline Kaldjob zulässig.
+- **Kernkonzept:** ISO/IEC 27001 Annex A (93 Controls, meist binär/subjektiv bewertet); jedes Control mit Verifikations- (technisch/messbar) und Validierungsmetriken (organisatorisch/prozessual) verknüpft; Ableitung des **Maturity Indicator Level (MIL 0–3)** angelehnt an C2M2; vier Schichten: duale Profilbildung, Decision Engine, Metric View, Maturity Evaluator.
+- **Architektur:** Client-Server mit getrennter Codebasis, Score-/Aggregationslogik serverseitig.
+- **Features:** Metric View, sessionbasierter Maturity-Assessment-Workflow (MIL 0–3, Freitext-Notizen), Aggregation/Reporting (Ø-MIL, Punkte, Prozent je Control/Domain/Gesamt).
+- **Technologie-Stack:** Angular (TypeScript), RxJS, HttpClient, Flask, JSON, SQL-Katalogtabellen, Karma/Jasmine, pytest.
+- **Einschränkungen:** kein AuthN/AuthZ, Katalog im Bachelorarbeits-Scope, Freitext-Notizen nur gespeichert (nicht ausgewertet), keine differenzierte Ausweisung nicht bewerteter Fragen, kein Agent-/LLM-Logging/Review-Workflow.
 
-## Kontakt
+---
 
-**Autorin:** Ann-Jacqueline Kaldjob
-**Kontext:** Bachelorarbeit zum Thema Maturity-Assessment und metrik-basierter Bewertung von Informationssicherheits-Kontrollen nach ISO/IEC 27001 (V²ISMS-MS-Ansatz).
+## 14. Lizenz
+
+Siehe `LICENSE`. Sofern keine separate Lizenzdatei vorhanden ist, gilt der im Rahmen der Bachelorarbeit gesetzte Rahmen.
+
+---
+
+## 15. Kontakt
+
+**Ann-Jacqueline Kaldjob** – Bachelorarbeit V²ISMS-MS (V²ISMS-MS-Ansatz)
+
+GitHub: [https://github.com/Ann-Jacqueline/Bachelorarbeit_V2ISMS-MS](https://github.com/Ann-Jacqueline/Bachelorarbeit_V2ISMS-MS)
