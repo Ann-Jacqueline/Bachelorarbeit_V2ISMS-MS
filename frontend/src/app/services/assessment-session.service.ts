@@ -184,6 +184,7 @@ export class AssessmentSessionService {
         assessment_level: AssessmentLevel | null;
         notes: string;
         updated_at: string;
+        saved: boolean;
       }>;
     }>;
     fill_missing_with_zero: boolean;
@@ -194,12 +195,19 @@ export class AssessmentSessionService {
         control_id: packet.controlId,
         completed: packet.completed,
         updated_at: packet.updatedAt,
-        answers: packet.answers.map((answer) => ({
-          metric_id: answer.metricId,
-          assessment_level: answer.assessmentLevel,
-          notes: answer.notes,
-          updated_at: answer.updatedAt
-        }))
+        // Der Maturity Evaluator ist die Quelle der Wahrheit: Nur tatsächlich
+        // gespeicherte Antworten (saved === true) mit gesetztem MIL-Level zählen
+        // als beantwortet. Ungespeicherte Entwürfe werden nicht übermittelt,
+        // damit answer_count/Abdeckung nicht aufgebäht werden.
+        answers: packet.answers
+          .filter((answer) => answer.saved && answer.assessmentLevel !== null)
+          .map((answer) => ({
+            metric_id: answer.metricId,
+            assessment_level: answer.assessmentLevel,
+            notes: answer.notes,
+            updated_at: answer.updatedAt,
+            saved: true
+          }))
       })),
       fill_missing_with_zero: false
     };

@@ -14,6 +14,8 @@ from module_metric_view.MetricQueryService import MetricViewQueryService
 from module_maturity_evaluation.MaturityService import MaturityService
 from module_agents.AgentService import AgentService
 from module_agents.NoteAnalyzerAgent import NoteAnalyzerAgent
+from module_agents.IsmsAssessmentAgent import IsmsAssessmentAgent
+from module_agents.ImprovementAdvisorAgent import ImprovementAdvisorAgent
 from module_report.ReportService import ReportService
 from module_report.json_exporter import render_json
 from module_report.markdown_renderer import render_markdown
@@ -424,6 +426,64 @@ def analyze_control_note(session_id, control_id):
         return jsonify({
             "status": "error",
             "message": "Interner Fehler bei der Notiz-Analyse.",
+            "data": None
+        }), 500
+
+    finally:
+        conn.close()
+
+
+def _agent_response_status_code(response):
+    if response["status"] == "success":
+        return 200
+    if response["status"] == "not_found":
+        return 404
+    if response["status"] == "no_data":
+        return 422
+    return 500
+
+
+@app.post("/api/agents/session/<session_id>/assess-isms")
+def assess_isms(session_id):
+    """KI-Assessment des ISMS-Stands anhand der Control-/Domänen-Scores.
+
+    Ergebnis ist immer nur ein Vorschlag (agent_log, status='proposed') –
+    Freigabe erfolgt über POST /api/agents/logs/<log_id>/review.
+    """
+    conn = create_connection()
+    try:
+        agent = IsmsAssessmentAgent(conn)
+        response = agent.assess_response(session_id)
+        return jsonify(response), _agent_response_status_code(response)
+
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Interner Fehler beim ISMS-Assessment.",
+            "data": None
+        }), 500
+
+    finally:
+        conn.close()
+
+
+@app.post("/api/agents/session/<session_id>/suggest-improvements")
+def suggest_improvements(session_id):
+    """KI-Verbesserungsvorschläge anhand des Umsetzungsgrads (MIL) je Control.
+
+    Ergebnis ist immer nur ein Vorschlag (agent_log, status='proposed') –
+    Freigabe erfolgt über POST /api/agents/logs/<log_id>/review.
+    """
+    conn = create_connection()
+    try:
+        agent = ImprovementAdvisorAgent(conn)
+        response = agent.suggest_response(session_id)
+        return jsonify(response), _agent_response_status_code(response)
+
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Interner Fehler bei den Verbesserungsvorschlägen.",
             "data": None
         }), 500
 

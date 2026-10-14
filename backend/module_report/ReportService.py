@@ -4,10 +4,12 @@ from module_maturity_evaluation.MIL_mapping import get_mil_display_info
 from module_maturity_evaluation.rating_state import (
     get_all_ratings_for_session,
     get_control_catalog,
+    get_control_metadata,
 )
 from module_maturity_evaluation.score_aggregation import (
     build_domain_summary,
     build_overall_summary,
+    prioritize_improvement_candidates,
 )
 
 
@@ -69,6 +71,27 @@ class ReportService:
             (session_id,)
         ).fetchall()
 
+        agent_log_entries = [
+            {
+                "log_id": row["log_id"],
+                "agent_name": row["agent_name"],
+                "action": row["action"],
+                "output_text": row["output_text"],
+                "control_id": row["control_id"],
+                "status": row["status"],
+                "reviewed_by": row["reviewed_by"],
+                "reviewed_at": row["reviewed_at"],
+                "created_at": row["created_at"],
+                "provider": row["provider"],
+                "model": row["model"]
+            }
+            for row in agent_logs
+        ]
+
+        improvement_candidates = prioritize_improvement_candidates(
+            domains, control_metadata=get_control_metadata(self.conn), limit=10
+        )
+
         return {
             "session_id": session["session_id"],
             "status": session["status"],
@@ -78,25 +101,44 @@ class ReportService:
             "executive": self._build_executive(overall, note_count),
             "overall": overall,
             "domains": domains,
-            "agent_logs": [
-                {
-                    "log_id": row["log_id"],
-                    "agent_name": row["agent_name"],
-                    "action": row["action"],
-                    "output_text": row["output_text"],
-                    "control_id": row["control_id"],
-                    "status": row["status"],
-                    "reviewed_by": row["reviewed_by"],
-                    "reviewed_at": row["reviewed_at"],
-                    "created_at": row["created_at"],
-                    "provider": row["provider"],
-                    "model": row["model"]
-                }
-                for row in agent_logs
-            ],
+            "isms_assessment": self._build_agent_section(
+                agent_log_entries, "assess_isms"
+            ),
+            "improvement_suggestions": self._build_agent_section(
+                agent_log_entries, "suggest_improvements",
+                candidates=improvement_candidates,
+            ),
+            "agent_logs": agent_log_entries,
             "methodology": self._build_methodology(),
             "generated_with": "V2ISMS-MS Reifegrad-Assessment"
         }
+
+    def _build_agent_section(self, agent_log_entries, action, candidates=None):
+        """Neueste (bevorzugt freigegebene) KI-Analyse zu einer Agent-Action."""
+        matching = [log for log in agent_log_entries if log["action"] == action]
+        if not matching:
+            return None
+
+        selected = matching[0]
+        for log in matching:
+            if log["status"] == "accepted":
+                selected = log
+                break
+
+        section = {
+            "action": selected["action"],
+            "agent_name": selected["agent_name"],
+            "status": selected["status"],
+            "output_text": selected["output_text"],
+            "reviewed_by": selected["reviewed_by"],
+            "reviewed_at": selected["reviewed_at"],
+            "created_at": selected["created_at"],
+            "provider": selected["provider"],
+            "model": selected["model"],
+        }
+        if candidates is not None:
+            section["candidates"] = candidates
+        return section
 
     def _build_executive(self, overall, note_count=0):
         coverage = overall["coverage"]

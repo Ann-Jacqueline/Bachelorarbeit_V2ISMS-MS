@@ -288,7 +288,7 @@ python backend\app.py
 ```powershell
 cd frontend
 npm install
-npm start        # ng serve
+ng serve
 ```
 
 Standard-URLs: Frontend `http://localhost:4200`, Backend `http://localhost:5000`.

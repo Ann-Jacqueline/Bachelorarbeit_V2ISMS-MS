@@ -7,6 +7,7 @@ import {
   AgentReportLog,
   AssessmentApiService,
   CoverageSummary,
+  ImprovementCandidate,
   MaturityDomainControlSummary,
   MaturityDomainSummary,
   MaturityExecutiveSummary,
@@ -20,6 +21,7 @@ import {
   AgentApiService,
   AgentLogEntry,
   AgentStatusData,
+  AssessmentData,
   NoteAnalysisData
 } from '../../services/agent-api.service';
 
@@ -32,6 +34,36 @@ interface ControlAgentState {
   reviewStatus: 'proposed' | 'accepted' | 'rejected' | null;
   provider: string | null;
   reviewedBy: string | null;
+}
+
+interface AiSectionState {
+  isGenerating: boolean;
+  isReviewing: boolean;
+  error: string | null;
+  logId: number | null;
+  proposal: string | null;
+  reviewStatus: 'proposed' | 'accepted' | 'rejected' | null;
+  provider: string | null;
+  model: string | null;
+  reviewedBy: string | null;
+  createdAt: string | null;
+  candidates: ImprovementCandidate[];
+}
+
+function createAiSectionState(): AiSectionState {
+  return {
+    isGenerating: false,
+    isReviewing: false,
+    error: null,
+    logId: null,
+    proposal: null,
+    reviewStatus: null,
+    provider: null,
+    model: null,
+    reviewedBy: null,
+    createdAt: null,
+    candidates: []
+  };
 }
 
 type ExportFormat = 'json' | 'markdown' | 'pdf';
@@ -57,6 +89,9 @@ export class AssessmentSummaryReviewComponent implements OnInit {
   agentProvider: string | null = null;
   agentStates: Record<string, ControlAgentState> = {};
   expandedNotes: Record<string, boolean> = {};
+
+  ismsState: AiSectionState = createAiSectionState();
+  improvementState: AiSectionState = createAiSectionState();
 
   downloadingFormat: ExportFormat | null = null;
   downloadError: string | null = null;
@@ -125,26 +160,38 @@ export class AssessmentSummaryReviewComponent implements OnInit {
       next: (response: ApiResponse<AgentLogEntry[]>) => {
         const logs = response.data ?? [];
         for (const log of logs) {
-          if (log.agent_name !== 'note_analyzer' || !log.control_id) {
-            continue;
-          }
           if (log.status === 'error') {
             continue;
           }
-          // Logs kommen absteigend nach log_id – nur die neueste Analyse pro Control übernehmen.
-          if (this.agentStates[log.control_id]) {
+          // Logs kommen absteigend nach log_id – nur die neueste Analyse übernehmen.
+          if (log.agent_name === 'note_analyzer' && log.control_id) {
+            if (this.agentStates[log.control_id]) {
+              continue;
+            }
+            this.agentStates[log.control_id] = {
+              isAnalyzing: false,
+              isReviewing: false,
+              error: null,
+              logId: log.log_id,
+              proposal: log.output_text,
+              reviewStatus: log.status as 'proposed' | 'accepted' | 'rejected' | null,
+              provider: log.provider,
+              reviewedBy: log.reviewed_by
+            };
             continue;
           }
-          this.agentStates[log.control_id] = {
-            isAnalyzing: false,
-            isReviewing: false,
-            error: null,
-            logId: log.log_id,
-            proposal: log.output_text,
-            reviewStatus: log.status as 'proposed' | 'accepted' | 'rejected' | null,
-            provider: log.provider,
-            reviewedBy: log.reviewed_by
-          };
+
+          if (log.action === 'assess_isms' && !this.ismsState.logId) {
+            this.ismsState = this.stateFromLog(log);
+            continue;
+          }
+
+          if (log.action === 'suggest_improvements' && !this.improvementState.logId) {
+            this.improvementState = this.stateFromLog(
+              log,
+              this.report?.improvement_suggestions?.candidates ?? []
+            );
+          }
         }
       },
       error: () => {
@@ -207,6 +254,127 @@ export class AssessmentSummaryReviewComponent implements OnInit {
         state.error = err?.error?.message || 'Fehler beim Review des Vorschlags.';
       }
     });
+  }
+
+  generateIsmsAssessment(): void {
+    const sessionId = this.summary?.session_id;
+    if (!sessionId || this.ismsState.isGenerating) {
+      return;
+    }
+
+    const state = this.ismsState;
+    state.isGenerating = true;
+    state.error = null;
+
+    this.agentApiService.assessIsms(sessionId).subscribe({
+      next: (response: ApiResponse<AssessmentData>) => {
+        state.isGenerating = false;
+        if (response.status !== 'success' || !response.data) {
+          state.error = response.message || 'Die ISMS-Bewertung ist fehlgeschlagen.';
+          return;
+        }
+        state.logId = response.data.log_id;
+        state.proposal = response.data.proposal;
+        state.reviewStatus = 'proposed';
+        state.provider = response.data.provider;
+        state.model = response.data.model;
+        state.reviewedBy = null;
+        state.createdAt = new Date().toISOString();
+      },
+      error: (err) => {
+        state.isGenerating = false;
+        state.error = err?.error?.message || 'Fehler beim Aufruf des Agenten.';
+      }
+    });
+  }
+
+  generateImprovements(): void {
+    const sessionId = this.summary?.session_id;
+    if (!sessionId || this.improvementState.isGenerating) {
+      return;
+    }
+
+    const state = this.improvementState;
+    state.isGenerating = true;
+    state.error = null;
+
+    this.agentApiService.suggestImprovements(sessionId).subscribe({
+      next: (response: ApiResponse<AssessmentData>) => {
+        state.isGenerating = false;
+        if (response.status !== 'success' || !response.data) {
+          state.error =
+            response.message || 'Die Verbesserungsvorschläge sind fehlgeschlagen.';
+          return;
+        }
+        state.logId = response.data.log_id;
+        state.proposal = response.data.proposal;
+        state.reviewStatus = 'proposed';
+        state.provider = response.data.provider;
+        state.model = response.data.model;
+        state.reviewedBy = null;
+        state.createdAt = new Date().toISOString();
+        state.candidates = response.data.candidates ?? [];
+      },
+      error: (err) => {
+        state.isGenerating = false;
+        state.error = err?.error?.message || 'Fehler beim Aufruf des Agenten.';
+      }
+    });
+  }
+
+  reviewIsms(decision: 'accepted' | 'rejected'): void {
+    this.reviewAiSection(this.ismsState, decision);
+  }
+
+  reviewImprovements(decision: 'accepted' | 'rejected'): void {
+    this.reviewAiSection(this.improvementState, decision);
+  }
+
+  private reviewAiSection(
+    state: AiSectionState,
+    decision: 'accepted' | 'rejected'
+  ): void {
+    if (!state.logId || state.reviewStatus !== 'proposed') {
+      return;
+    }
+
+    state.isReviewing = true;
+    state.error = null;
+
+    this.agentApiService.reviewProposal(state.logId, decision).subscribe({
+      next: (response: ApiResponse<AgentLogEntry>) => {
+        state.isReviewing = false;
+        if (response.status !== 'success' || !response.data) {
+          state.error = response.message || 'Review fehlgeschlagen.';
+          return;
+        }
+        state.reviewStatus = response.data.status as 'accepted' | 'rejected';
+        state.reviewedBy = response.data.reviewed_by;
+      },
+      error: (err) => {
+        state.isReviewing = false;
+        state.error = err?.error?.message || 'Fehler beim Review des Vorschlags.';
+      }
+    });
+  }
+
+  private stateFromLog(
+    log: AgentLogEntry,
+    candidates: ImprovementCandidate[] = []
+  ): AiSectionState {
+    return {
+      isGenerating: false,
+      isReviewing: false,
+      error: null,
+      logId: log.log_id,
+      proposal: log.output_text,
+      reviewStatus: log.status as 'proposed' | 'accepted' | 'rejected' | null,
+      provider: log.provider,
+      model: log.model,
+      reviewedBy: log.reviewed_by,
+      createdAt: log.created_at,
+      candidates
+    };
   }
 
   toggleNote(controlId: string): void {
@@ -389,6 +557,13 @@ export class AssessmentSummaryReviewComponent implements OnInit {
     return this.report?.agent_logs ?? [];
   }
 
+  get improvementCandidates(): ImprovementCandidate[] {
+    if (this.improvementState.candidates.length) {
+      return this.improvementState.candidates;
+    }
+    return this.report?.improvement_suggestions?.candidates ?? [];
+  }
+
   get sessionStatusLabel(): string {
     if (!this.summary) {
       return '–';
@@ -512,5 +687,31 @@ export class AssessmentSummaryReviewComponent implements OnInit {
     }
 
     return value.toFixed(1);
+  }
+
+  /** Umfang des Donut-Rings (r = 54, viewBox 128×128). */
+  private readonly donutCircumference = 2 * Math.PI * 54;
+
+  /** stroke-dasharray für den Donut-Fortschrittsring (0–100 %). */
+  donutDash(value: number | null | undefined): string {
+    const percent = this.clampPercent(value);
+    const circumference = this.donutCircumference;
+    const filled = (percent / 100) * circumference;
+    return `${filled.toFixed(2)} ${circumference.toFixed(2)}`;
+  }
+
+  /** Runde Prozentanzeige für die Donut-Mitte. */
+  donutLabel(value: number | null | undefined): string {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return 'n/a';
+    }
+    return `${Math.round(value)}%`;
+  }
+
+  private clampPercent(value: number | null | undefined): number {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, value));
   }
 }

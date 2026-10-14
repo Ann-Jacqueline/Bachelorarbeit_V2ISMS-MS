@@ -3,6 +3,7 @@ from tests.conftest import make_rating
 from module_maturity_evaluation.score_aggregation import (
     build_domain_summary,
     build_overall_summary,
+    prioritize_improvement_candidates,
 )
 
 CATALOG = [
@@ -112,3 +113,48 @@ class TestBuildDomainSummary:
         assert entry["mil_band"] == {"floor": 1, "ceiling": 2}
         assert entry["answer_count"] == 6
         assert entry["status"] == "complete"
+
+
+class TestPrioritizeImprovementCandidates:
+    def _domains(self):
+        ratings = [
+            make_rating("5.12", 2.0, answer_count=4, expected_answer_count=4, is_complete=1),
+            make_rating("6.3", 0.0, answer_count=8, expected_answer_count=8, is_complete=1),
+            make_rating("8.3", 1.0, answer_count=6, expected_answer_count=6, is_complete=1),
+        ]
+        return build_domain_summary(ratings, CATALOG)
+
+    def test_priority_weighting_by_criticality(self):
+        metadata = {
+            "5.12": {"kritikalitaet": "hoch"},
+            "6.3": {"kritikalitaet": "niedrig"},
+            "8.3": {"kritikalitaet": "mittel"},
+        }
+        ranked = prioritize_improvement_candidates(self._domains(), metadata)
+
+        scores = {item["control_id"]: item["priority_score"] for item in ranked}
+        # 5.12: gap 1 × 3 = 3, 6.3: gap 3 × 1 = 3, 8.3: gap 2 × 2 = 4
+        assert scores["5.12"] == 3.0
+        assert scores["6.3"] == 3.0
+        assert scores["8.3"] == 4.0
+        assert ranked[0]["control_id"] == "8.3"
+
+    def test_unrated_control_gets_max_gap(self):
+        ratings = [make_rating("5.12", 2.0, answer_count=4, expected_answer_count=4, is_complete=1)]
+        domains = build_domain_summary(ratings, CATALOG)
+        metadata = {"8.3": {"kritikalitaet": "hoch"}}
+        ranked = prioritize_improvement_candidates(domains, metadata)
+
+        unrated = next(item for item in ranked if item["control_id"] == "8.3")
+        assert unrated["mil_level"] is None
+        assert unrated["priority_score"] == 9.0
+
+    def test_limit_applied(self):
+        ranked = prioritize_improvement_candidates(self._domains(), {}, limit=1)
+        assert len(ranked) == 1
+
+    def test_reason_mentions_criticality(self):
+        metadata = {"5.12": {"kritikalitaet": "hoch"}}
+        ranked = prioritize_improvement_candidates(self._domains(), metadata)
+        entry = next(item for item in ranked if item["control_id"] == "5.12")
+        assert "Kritikalität hoch" in entry["reason"]

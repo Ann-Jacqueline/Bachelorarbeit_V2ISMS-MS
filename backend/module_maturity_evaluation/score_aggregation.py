@@ -277,6 +277,84 @@ def build_overall_summary(ratings, total_controls=None, control_catalog=None):
     return summary
 
 
+_CRITICALITY_WEIGHTS = {
+    "hoch": 3,
+    "mittel": 2,
+    "niedrig": 1,
+}
+
+
+def _criticality_weight(kritikalitaet):
+    if kritikalitaet is None:
+        return 1
+    return _CRITICALITY_WEIGHTS.get(str(kritikalitaet).strip().lower(), 1)
+
+
+def prioritize_improvement_candidates(domains, control_metadata=None, limit=10):
+    """Deterministisches Pre-Ranking der Controls mit dem größten Verbesserungsbedarf.
+
+    Grundlage sind ausschließlich die bereits berechneten MIL-Scores ("Übersetzungsgrad"
+    pro Control) zusammen mit der Kritikalität aus dem Control-Profil. Der Agent
+    formuliert später nur aus – die Priorisierung selbst ist reproduzierbar.
+
+    Priorität = MIL-Lücke (0–3) × Kritikalitäts-Gewicht (1–3), Werte 0–9.
+    Unbewertete Controls werden wie die maximale Lücke (3) behandelt.
+    """
+    control_metadata = control_metadata or {}
+    ranked = []
+    domain_percentages = {
+        domain.get("domain"): (
+            domain.get("percentage") if domain.get("percentage") is not None else 0.0
+        )
+        for domain in domains or []
+    }
+
+    for domain in domains or []:
+        domain_label = domain.get("domain")
+        for control in domain.get("controls") or []:
+            mil_level = control.get("mil_level")
+            if mil_level is None:
+                mil_gap = 3.0
+            else:
+                mil_gap = max(0.0, min(3.0, 3.0 - float(mil_level)))
+
+            kritikalitaet = (control_metadata.get(control["control_id"]) or {}).get(
+                "kritikalitaet"
+            )
+            weight = _criticality_weight(kritikalitaet)
+            priority_score = round(mil_gap * weight, 2)
+
+            if mil_level is None:
+                mil_desc = "nicht bewertet (0 Punkte)"
+            else:
+                mil_desc = control.get("mil_display") or f"MIL {round(float(mil_level), 1)}"
+
+            ranked.append({
+                "control_id": control["control_id"],
+                "control_name": control.get("control_name"),
+                "domain": domain_label,
+                "mil_level": mil_level,
+                "mil_display": control.get("mil_display"),
+                "status": control.get("status"),
+                "zero_reason": control.get("zero_reason"),
+                "kritikalitaet": kritikalitaet,
+                "priority_score": priority_score,
+                "reason": (
+                    f"{mil_desc}, Kritikalität "
+                    f"{kritikalitaet or 'unbekannt'} → Priorität {priority_score}"
+                ),
+            })
+
+    ranked.sort(
+        key=lambda item: (
+            -item["priority_score"],
+            domain_percentages.get(item["domain"], 0.0),
+            str(item["control_id"]),
+        )
+    )
+    return ranked[:limit] if limit is not None else ranked
+
+
 def format_mil_display(mil_level):
     """Kompatibilitätshilfe für alte Aufrufer."""
     return get_mil_display(mil_level)

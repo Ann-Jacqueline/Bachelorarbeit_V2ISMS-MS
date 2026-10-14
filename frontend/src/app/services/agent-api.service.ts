@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ApiResponse } from './assessment-api.service';
+import { ApiResponse, ImprovementCandidate } from './assessment-api.service';
 
 export type AgentReviewStatus = 'proposed' | 'accepted' | 'rejected' | 'error';
 
@@ -19,6 +19,18 @@ export interface NoteAnalysisData {
   analyzed_note: string;
   control_id: string;
   session_id: string;
+}
+
+export interface AssessmentData {
+  log_id: number;
+  proposal: string;
+  provider: string;
+  model: string;
+  review_status: AgentReviewStatus;
+  session_id: string;
+  overall_percentage?: number | null;
+  avg_mil_level?: number | null;
+  candidates?: ImprovementCandidate[];
 }
 
 export interface AgentLogEntry {
@@ -54,6 +66,22 @@ export class AgentApiService {
   ): Observable<ApiResponse<NoteAnalysisData>> {
     return this.http.post<ApiResponse<NoteAnalysisData>>(
       `${this.baseUrl}/session/${sessionId}/controls/${controlId}/analyze-note`,
+      {}
+    );
+  }
+
+  assessIsms(sessionId: string): Observable<ApiResponse<AssessmentData>> {
+    return this.http.post<ApiResponse<AssessmentData>>(
+      `${this.baseUrl}/session/${sessionId}/assess-isms`,
+      {}
+    );
+  }
+
+  suggestImprovements(
+    sessionId: string
+  ): Observable<ApiResponse<AssessmentData>> {
+    return this.http.post<ApiResponse<AssessmentData>>(
+      `${this.baseUrl}/session/${sessionId}/suggest-improvements`,
       {}
     );
   }

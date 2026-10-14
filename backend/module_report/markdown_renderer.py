@@ -8,6 +8,35 @@ def _safe(value):
     return "" if value is None else str(value)
 
 
+_REVIEW_STATUS_LABELS = {
+    "proposed": "Wartet auf Freigabe",
+    "accepted": "Freigegeben",
+    "rejected": "Abgelehnt",
+    "error": "Fehler",
+}
+
+
+def _ai_section(section):
+    if not section:
+        return "Für diese Session wurde keine KI-Analyse erfasst."
+
+    lines = [
+        f"- **Status**: {_REVIEW_STATUS_LABELS.get(section.get('status'), _safe(section.get('status')))}",
+        f"- **Modell**: {_safe(section.get('provider'))} / {_safe(section.get('model'))}",
+        f"- **Erstellt**: {_safe(section.get('created_at'))}",
+    ]
+    if section.get("reviewed_by"):
+        lines.append(f"- **Freigegeben von**: {_safe(section.get('reviewed_by'))}")
+    lines.extend([
+        "",
+        "```",
+        _safe(section.get("output_text")) + "\n",
+        "```",
+        "",
+    ])
+    return "\n".join(lines)
+
+
 def _maturity_band_label(value):
     if value is None:
         return "n/a"
@@ -89,7 +118,32 @@ def render_markdown(report):
         )
     lines.append("")
 
-    lines.append("## 4. Control-Details")
+    lines.append("## 4. KI-Assessment des ISMS-Stands")
+    lines.append("")
+    lines.append(_ai_section(report.get("isms_assessment")))
+
+    lines.append("## 5. KI-Verbesserungsvorschläge")
+    lines.append("")
+    lines.append(_ai_section(report.get("improvement_suggestions")))
+    improvement = report.get("improvement_suggestions") or {}
+    improvement_candidates = improvement.get("candidates") or []
+    if improvement_candidates:
+        lines.append("**Priorisierte Kandidaten (deterministisch):**")
+        lines.append("")
+        lines.append("| Control | Domäne | Umsetzungsgrad | Kritikalität | Priorität |")
+        lines.append("|---|---|---|---|---|")
+        for candidate in improvement_candidates:
+            lines.append(
+                f"| {_safe(candidate.get('control_id'))} "
+                f"{_safe(candidate.get('control_name'))} "
+                f"| {_safe(candidate.get('domain'))} "
+                f"| {_safe(candidate.get('mil_display')) or 'nicht bewertet'} "
+                f"| {_safe(candidate.get('kritikalitaet')) or 'unbekannt'} "
+                f"| {_safe(candidate.get('priority_score'))} |"
+            )
+        lines.append("")
+
+    lines.append("## 6. Control-Details")
     lines.append("")
     for domain in domains:
         lines.append(f"### {_safe(domain.get('domain'))}")
@@ -160,7 +214,7 @@ def render_markdown(report):
                 lines.append("")
 
     agent_logs = report.get("agent_logs") or []
-    lines.append("## 5. AI-Analysen (Agent-Audit-Trail)")
+    lines.append("## 7. AI-Analysen (Agent-Audit-Trail)")
     lines.append("")
     if not agent_logs:
         lines.append("Für diese Session wurden keine Agent-Analysen erfasst.")
@@ -183,7 +237,7 @@ def render_markdown(report):
             lines.append("")
 
     methodology = report.get("methodology") or {}
-    lines.append("## 6. Berechnungsmethodik")
+    lines.append("## 8. Berechnungsmethodik")
     lines.append("")
     for key, text in methodology.items():
         if key == "maturity_bands":

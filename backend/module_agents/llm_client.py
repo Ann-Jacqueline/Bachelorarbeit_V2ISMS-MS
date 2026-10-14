@@ -51,6 +51,11 @@ class MockLLMClient(LLMClient):
         return LLMResponse(text=text, model="mock-model", provider=self.provider_name)
 
     def _build_mock_response(self, user_prompt: str) -> str:
+        if "ISMS-Reifegrad-Kontext" in user_prompt:
+            return self._build_mock_isms_assessment(user_prompt)
+        if "Priorisierte Verbesserungskandidaten" in user_prompt:
+            return self._build_mock_improvements(user_prompt)
+
         note = self._extract_note(user_prompt)
         if note is None:
             return (
@@ -82,6 +87,111 @@ class MockLLMClient(LLMClient):
         lines.append(
             "— [MOCK-Antwort, automatisch aus dem Notiztext erzeugt; "
             "keine echte LLM-Auswertung.]"
+        )
+        return "\n".join(lines)
+
+    def _build_mock_isms_assessment(self, user_prompt: str) -> str:
+        percentage = self._field(user_prompt, r"Gesamt-Reifegrad[^:]*:\s*([^\n]+)")
+        avg_mil = self._field(user_prompt, r"Ø MIL-Level:\s*([^\n]+)")
+        coverage = self._field(user_prompt, r"Abdeckung:\s*([^\n]+)")
+        not_implemented = self._field(
+            user_prompt, r"Explizit MIL 0 \(Not Implemented\):\s*([^\n]+)"
+        )
+
+        domains = re.findall(
+            r"^-\s*([^:]+):\s*Reifegrad\s*([^,]+),\s*Ø MIL\s*([^,]+),\s*Abdeckung\s*([^,]+)",
+            user_prompt,
+            re.MULTILINE,
+        )
+
+        lines = []
+        lines.append(
+            "**Gesamteinschätzung:** "
+            f"Auf Basis der vorgegebenen Scores liegt der Gesamt-Reifegrad bei "
+            f"{percentage or 'n/a'} (Ø MIL {avg_mil or 'n/a'}, Abdeckung "
+            f"{coverage or 'n/a'}). "
+            "Das ISMS zeigt eine teilweise Umsetzung der Controls; die Abdeckung "
+            "ist bei der Bewertung der Aussagekraft zu berücksichtigen."
+        )
+        lines.append("")
+        lines.append("**Stärken:**")
+
+        sorted_domains = sorted(
+            domains, key=lambda item: item[1], reverse=True
+        )
+        strengths = sorted_domains[:2]
+        if strengths:
+            for name, pct, mil, cov in strengths:
+                lines.append(
+                    f"- {name.strip()}: vergleichsweise hoher Reifegrad "
+                    f"({pct.strip()}, Ø MIL {mil.strip()})."
+                )
+        else:
+            lines.append("- Keine Domänendaten ableitbar.")
+        lines.append("")
+        lines.append("**Schwächen und Risiken:**")
+        weaknesses = sorted_domains[-2:] if len(sorted_domains) > 2 else sorted_domains
+        if weaknesses:
+            for name, pct, mil, cov in weaknesses:
+                lines.append(
+                    f"- {name.strip()}: niedriger Reifegrad ({pct.strip()}, "
+                    f"Ø MIL {mil.strip()}); Handlungsbedarf."
+                )
+        if not_implemented and not_implemented.strip() not in ("0", "None"):
+            lines.append(
+                f"- {not_implemented.strip()} Control(s) explizit MIL 0 "
+                "(Not Implemented) – nicht umgesetzt."
+            )
+        lines.append("")
+        lines.append("**Dringendster Handlungsbedarf:**")
+        if weaknesses:
+            name = weaknesses[0][0].strip()
+            lines.append(
+                f"- Zuerst Domäne {name} adressieren (schwächster Reifegrad im "
+                "vorgegebenen Score)."
+            )
+        lines.append(
+            "- Nicht/vollständig bewertete Controls nachbewerten, um die "
+            "Aussagekraft des Gesamtscores zu erhöhen."
+        )
+        lines.append("")
+        lines.append(
+            "— [MOCK-Antwort, aus den vorgegebenen Scores erzeugt; keine echte "
+            "LLM-Auswertung. Der Agent bewertet keine MIL-Werte selbst.]"
+        )
+        return "\n".join(lines)
+
+    def _build_mock_improvements(self, user_prompt: str) -> str:
+        candidates = re.findall(
+            r"^\d+\.\s*([^|]+)\|\s*([^|]+)\|\s*Kritikalität:\s*([^|]+)\|\s*Priorität:\s*([^\n]+)",
+            user_prompt,
+            re.MULTILINE,
+        )
+
+        lines = []
+        lines.append(
+            "**Zusammenfassung:** "
+            f"Der größte Hebel liegt bei den {len(candidates)} höchstpriorisierten "
+            "Controls (hohe Kritikalität bei gleichzeitig niedrigem Umsetzungsgrad)."
+        )
+        lines.append("")
+        lines.append("**Priorisierte Verbesserungsvorschläge:**")
+        if not candidates:
+            lines.append("- Keine Kandidaten übergeben.")
+        for control, mil, krit, prio in candidates:
+            control = control.strip()
+            lines.append(
+                f"- **{control}**: Maßnahme – Umsetzungsgrad von {mil.strip()} "
+                f"gezielt anheben; Bezug – Kritikalität {krit.strip()} bei "
+                f"Priorität {prio.strip()}. Erwarteter Effekt: spürbare Reduktion "
+                "des Risikos in diesem Control."
+            )
+        lines.append("")
+        lines.append("**Hinweis:** Die Priorisierung basiert auf MIL-Lücke und Kritikalität.")
+        lines.append("")
+        lines.append(
+            "— [MOCK-Antwort, aus den vorgegebenen Kandidaten erzeugt; keine echte "
+            "LLM-Auswertung. Der Agent bewertet keine MIL-Werte selbst.]"
         )
         return "\n".join(lines)
 

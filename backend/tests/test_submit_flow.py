@@ -223,6 +223,46 @@ class TestSubmitSession:
         entry = architecture["controls"][0]
         assert entry["missing_metrics"][0]["metric_id"] == "m_5_12_2"
 
+    def test_unsaved_drafts_excluded_from_answer_count(self, conn):
+        """Hardening: Antworten mit saved=False (ungespeicherte Entwürfe) zählen
+        nicht als beantwortet – analog zur Maturity-Evaluator-Regel. So erscheint
+        ein Control trotz offener Fragen nicht fälschlich als 'vollständig'."""
+        svc = MaturityService(conn)
+        sid = _new_session(svc)
+        payload = {
+            "controls": [
+                {
+                    "control_id": "5.12",
+                    "completed": False,
+                    "updated_at": "t",
+                    "answers": [
+                        {"metric_id": "m_5_12_1", "assessment_level": 2,
+                         "notes": None, "saved": True},
+                        {"metric_id": "m_5_12_2", "assessment_level": 2,
+                         "notes": "Entwurf, nicht gespeichert", "saved": False},
+                        # Ohne Flag -> aus Kompatibilität als gespeichert behandelt.
+                        {"metric_id": "m_5_12_3", "assessment_level": 2,
+                         "notes": None},
+                    ],
+                }
+            ],
+            "fill_missing_with_zero": False,
+        }
+        response = svc.submit_session_response(sid, payload)
+        assert response["status"] == "success"
+
+        submitted = response["data"]["submitted_controls"][0]
+        assert submitted["answer_count"] == 2
+        assert submitted["status"] == "incomplete"
+        assert [m["metric_id"] for m in submitted["missing_metrics"]] == [
+            "m_5_12_2", "m_5_12_4",
+        ]
+        assert response["data"]["overall"]["coverage"]["unanswered_questions"] == 2
+
+        # Die Notiz des Entwurfs darf nicht als Audit-Notiz gespeichert werden.
+        report = ReportService(conn).build_report_payload(sid)
+        assert report["executive"]["note_count"] == 0
+
     def test_fill_zero_marks_missing_as_unanswered(self, conn):
         svc = MaturityService(conn)
         sid = _new_session(svc)

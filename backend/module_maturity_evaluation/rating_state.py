@@ -176,3 +176,28 @@ def get_control_catalog(conn):
         order by control_id asc
         """
     ).fetchall()
+
+
+def get_control_metadata(conn):
+    """Zusatz-Metadaten je Control (z. B. Kritikalität) als dict.
+
+    Defensiv: Spalten, die im Schema fehlen, werden ausgelassen. So bleibt die
+    Funktion mit dem vollen Produktionsschema und dem minimalen Test-Schema
+    kompatibel.
+    """
+    columns = {
+        row[1] for row in conn.execute("PRAGMA table_info(control_profil)")
+    }
+    selected = [
+        column for column in ("kritikalitaet", "pruefbarkeit") if column in columns
+    ]
+    if not selected:
+        return {}
+
+    select_list = ", ".join(("control_id", *selected))
+    metadata = {}
+    for row in conn.execute(f"select {select_list} from control_profil"):
+        metadata[row["control_id"]] = {
+            column: row[column] for column in selected
+        }
+    return metadata

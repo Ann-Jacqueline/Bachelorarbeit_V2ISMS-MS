@@ -1,6 +1,11 @@
 <div class="summary-shell">
   <header class="summary-header">
-    <div>
+    <div class="summary-header-brand">
+      <img
+        class="report-brand-logo"
+        src="/assets/V2ISMS-MS_logo.png"
+        alt="V2ISMS-MS Logo"
+      />
       <p class="summary-kicker">Reifegrad-Business-Report</p>
       <h1>Review der Ergebnisse</h1>
       <p class="summary-subtitle">
@@ -113,6 +118,68 @@
           <p>Erfasste Notizen je Metrik, dokumentiert im Report.</p>
         </article>
       </div>
+
+      <div class="chart-panel">
+        <svg width="0" height="0" aria-hidden="true" class="chart-defs">
+          <defs>
+            <linearGradient id="donutGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7fd4ef"></stop>
+              <stop offset="100%" stop-color="#2596be"></stop>
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <div class="donut-chart">
+          <svg class="donut" viewBox="0 0 128 128" role="img" aria-label="Reifegrad">
+            <circle class="donut-track" cx="64" cy="64" r="54"></circle>
+            <circle
+              class="donut-value"
+              cx="64"
+              cy="64"
+              r="54"
+              [attr.stroke-dasharray]="donutDash(overall?.percentage)"
+            ></circle>
+          </svg>
+          <div class="donut-center">
+            <span class="donut-value-text">{{ donutLabel(overall?.percentage) }}</span>
+            <span class="donut-caption">Reifegrad</span>
+          </div>
+        </div>
+
+        <div class="donut-chart">
+          <svg class="donut" viewBox="0 0 128 128" role="img" aria-label="Abdeckung">
+            <circle class="donut-track" cx="64" cy="64" r="54"></circle>
+            <circle
+              class="donut-value"
+              cx="64"
+              cy="64"
+              r="54"
+              [attr.stroke-dasharray]="donutDash(coverage?.coverage_percentage)"
+            ></circle>
+          </svg>
+          <div class="donut-center">
+            <span class="donut-value-text">{{ donutLabel(coverage?.coverage_percentage) }}</span>
+            <span class="donut-caption">Abdeckung</span>
+          </div>
+        </div>
+
+        <div class="donut-chart">
+          <svg class="donut" viewBox="0 0 128 128" role="img" aria-label="Bewertungsquote">
+            <circle class="donut-track" cx="64" cy="64" r="54"></circle>
+            <circle
+              class="donut-value"
+              cx="64"
+              cy="64"
+              r="54"
+              [attr.stroke-dasharray]="donutDash(overall?.rated_percentage)"
+            ></circle>
+          </svg>
+          <div class="donut-center">
+            <span class="donut-value-text">{{ donutLabel(overall?.rated_percentage) }}</span>
+            <span class="donut-caption">Bewertet</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 2 · Gesamtübersicht -->
@@ -181,6 +248,22 @@
         </div>
       </div>
 
+      <div class="bar-chart" *ngIf="domains.length">
+        <p class="bar-chart-title">Reifegrad je Domäne</p>
+        <div class="bar-chart-grid">
+          <div class="bar-col" *ngFor="let domain of domains; trackBy: trackByDomain">
+            <div class="bar-track">
+              <div
+                class="bar-fill"
+                [style.height]="domain.percentage !== null ? domain.percentage + '%' : '0%'"
+              ></div>
+            </div>
+            <span class="bar-value">{{ formatPercentage(domain.percentage) }}</span>
+            <span class="bar-label" [title]="domain.domain">{{ domain.domain }}</span>
+          </div>
+        </div>
+      </div>
+
       <div class="domain-list" *ngIf="domains.length; else noDomains">
         <article class="domain-card" *ngFor="let domain of domains; trackBy: trackByDomain">
           <div class="domain-card-head">
@@ -214,11 +297,180 @@
       </ng-template>
     </section>
 
-    <!-- 4 · Control-Details -->
+    <!-- 4 · KI-Assessment des ISMS-Stands -->
+    <section class="summary-card section-card ai-card">
+      <div class="section-head">
+        <div>
+          <p class="card-kicker">4 · KI-Assessment des ISMS-Stands</p>
+          <h2>Automatische Einschätzung auf Basis der Scores</h2>
+        </div>
+        <span class="agent-provider-badge" *ngIf="agentProvider">
+          Agent-Provider: {{ agentProvider }}
+        </span>
+      </div>
+
+      <p class="ai-hint">
+        Die Einschätzung basiert ausschließlich auf den bereits berechneten MIL-,
+        Domänen- und Gesamtscores. Der Agent bewertet selbst keine Scores – das
+        Ergebnis ist ein Vorschlag, der freigegeben werden muss.
+      </p>
+
+      <div class="ai-actions">
+        <button
+          type="button"
+          class="agent-action"
+          [disabled]="ismsState.isGenerating"
+          (click)="generateIsmsAssessment()"
+        >
+          {{
+            ismsState.isGenerating
+              ? 'Erstelle Bewertung ...'
+              : (ismsState.proposal ? 'Bewertung neu erstellen' : 'ISMS-Bewertung erstellen')
+          }}
+        </button>
+      </div>
+
+      <div class="agent-error" *ngIf="ismsState.error">{{ ismsState.error }}</div>
+
+      <div class="agent-proposal" *ngIf="ismsState.proposal">
+        <div class="agent-proposal-head">
+          <span class="agent-badge">KI-Assessment (Vorschlag)</span>
+          <span
+            class="review-badge"
+            [class.review-proposed]="ismsState.reviewStatus === 'proposed'"
+            [class.review-accepted]="ismsState.reviewStatus === 'accepted'"
+            [class.review-rejected]="ismsState.reviewStatus === 'rejected'"
+          >
+            {{ reviewStatusLabel(ismsState.reviewStatus) }}
+          </span>
+        </div>
+
+        <pre class="agent-proposal-text">{{ ismsState.proposal }}</pre>
+
+        <div class="agent-proposal-meta" *ngIf="ismsState.provider">
+          Provider: {{ ismsState.provider }}
+          <ng-container *ngIf="ismsState.model"> · Modell: {{ ismsState.model }}</ng-container>
+          <ng-container *ngIf="ismsState.reviewedBy"> · Review durch: {{ ismsState.reviewedBy }}</ng-container>
+        </div>
+
+        <div class="agent-review-actions" *ngIf="ismsState.reviewStatus === 'proposed'">
+          <button
+            type="button"
+            class="review-accept"
+            [disabled]="ismsState.isReviewing"
+            (click)="reviewIsms('accepted')"
+          >
+            Freigeben
+          </button>
+          <button
+            type="button"
+            class="review-reject"
+            [disabled]="ismsState.isReviewing"
+            (click)="reviewIsms('rejected')"
+          >
+            Ablehnen
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · KI-Verbesserungsvorschläge -->
+    <section class="summary-card section-card ai-card">
+      <div class="section-head">
+        <div>
+          <p class="card-kicker">5 · KI-Verbesserungsvorschläge</p>
+          <h2>Maßnahmen nach Umsetzungsgrad (MIL) und Kritikalität</h2>
+        </div>
+      </div>
+
+      <p class="ai-hint">
+        Grundlage sind die MIL-Scores („Übersetzungsgrad") der einzelnen Controls.
+        Die Priorisierung (MIL-Lücke × Kritikalität) ist deterministisch; der Agent
+        formuliert daraus die Maßnahmen – als Vorschlag zur Freigabe.
+      </p>
+
+      <div class="ai-actions">
+        <button
+          type="button"
+          class="agent-action"
+          [disabled]="improvementState.isGenerating"
+          (click)="generateImprovements()"
+        >
+          {{
+            improvementState.isGenerating
+              ? 'Erstelle Vorschläge ...'
+              : (improvementState.proposal ? 'Vorschläge neu erstellen' : 'Verbesserungsvorschläge erstellen')
+          }}
+        </button>
+      </div>
+
+      <div class="agent-error" *ngIf="improvementState.error">{{ improvementState.error }}</div>
+
+      <div class="candidate-list" *ngIf="improvementCandidates.length">
+        <h3>Priorisierte Kandidaten</h3>
+        <div class="candidate-row" *ngFor="let candidate of improvementCandidates">
+          <div class="candidate-main">
+            <span class="control-id">{{ candidate.control_id }}</span>
+            <span class="control-name">{{ candidate.control_name || candidate.control_id }}</span>
+          </div>
+          <div class="candidate-meta">
+            <span class="candidate-tag">{{ candidate.domain }}</span>
+            <span class="candidate-tag">{{ candidate.mil_display || 'nicht bewertet' }}</span>
+            <span class="candidate-tag" *ngIf="candidate.kritikalitaet">
+              Kritikalität {{ candidate.kritikalitaet }}
+            </span>
+            <span class="candidate-priority">Priorität {{ candidate.priority_score }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="agent-proposal" *ngIf="improvementState.proposal">
+        <div class="agent-proposal-head">
+          <span class="agent-badge">KI-Verbesserungsvorschläge (Vorschlag)</span>
+          <span
+            class="review-badge"
+            [class.review-proposed]="improvementState.reviewStatus === 'proposed'"
+            [class.review-accepted]="improvementState.reviewStatus === 'accepted'"
+            [class.review-rejected]="improvementState.reviewStatus === 'rejected'"
+          >
+            {{ reviewStatusLabel(improvementState.reviewStatus) }}
+          </span>
+        </div>
+
+        <pre class="agent-proposal-text">{{ improvementState.proposal }}</pre>
+
+        <div class="agent-proposal-meta" *ngIf="improvementState.provider">
+          Provider: {{ improvementState.provider }}
+          <ng-container *ngIf="improvementState.model"> · Modell: {{ improvementState.model }}</ng-container>
+          <ng-container *ngIf="improvementState.reviewedBy"> · Review durch: {{ improvementState.reviewedBy }}</ng-container>
+        </div>
+
+        <div class="agent-review-actions" *ngIf="improvementState.reviewStatus === 'proposed'">
+          <button
+            type="button"
+            class="review-accept"
+            [disabled]="improvementState.isReviewing"
+            (click)="reviewImprovements('accepted')"
+          >
+            Freigeben
+          </button>
+          <button
+            type="button"
+            class="review-reject"
+            [disabled]="improvementState.isReviewing"
+            (click)="reviewImprovements('rejected')"
+          >
+            Ablehnen
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · Control-Details -->
     <section class="summary-card section-card">
       <div class="section-head">
         <div>
-          <p class="card-kicker">4 · Control-Details</p>
+          <p class="card-kicker">6 · Control-Details</p>
           <h2>Reifegrade, Vollständigkeit und Notizen je Control</h2>
         </div>
       </div>
@@ -415,7 +667,7 @@
     <section class="summary-card section-card" *ngIf="agentLogs.length">
       <div class="section-head">
         <div>
-          <p class="card-kicker">5 · AI-Analysen &amp; Freigaben</p>
+          <p class="card-kicker">7 · AI-Analysen &amp; Freigaben</p>
           <h2>Audit-Trail der Agent-Auswertungen</h2>
         </div>
       </div>
@@ -457,7 +709,7 @@
     <section class="summary-card section-card" *ngIf="methodology">
       <div class="section-head">
         <div>
-          <p class="card-kicker">6 · Methodik</p>
+          <p class="card-kicker">8 · Methodik</p>
           <h2>Berechnungs- und Einordnungsgrundlage</h2>
         </div>
       </div>

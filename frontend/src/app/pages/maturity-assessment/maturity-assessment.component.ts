@@ -323,8 +323,10 @@ export class MaturityAssessmentComponent implements OnInit {
     const fillConfirmed = window.confirm(
       'Folgende Controls sind unvollständig (bewertete Antworten / erwartete Metriken):\n\n' +
         `${list}\n\n` +
-        'Diese fehlenden Antworten werden beim Übermitteln mit MIL 0 belegt ' +
-        '(„Not Implemented“) und die Controls als vollständig markiert.\n\n' +
+        'Diese offenen Fragen werden beim Übermitteln mit 0 Punkten gewertet und ' +
+        'bleiben ausdrücklich als „nicht bewertet“ gekennzeichnet. Die betroffenen ' +
+        'Controls gelten weiterhin als UNVOLLSTÄNDIG – sie werden nicht als ' +
+        'vollständig markiert.\n\n' +
         'OK = mit Zero-Fill abschließen.\nAbbrechen = ohne Zero-Fill einreichen?'
     );
 

@@ -37,6 +37,21 @@ def _insert_agent_log(conn, session_id):
     conn.commit()
 
 
+def _insert_ai_log(conn, session_id, agent_name, action, output_text, status="proposed",
+                   reviewed_by=None, created_at="2026-01-02T00:00:00+00:00"):
+    conn.execute(
+        """
+        insert into agent_log (
+            agent_name, action, input_text, output_text, provider, model,
+            status, session_id, control_id, created_at, reviewed_by
+        )
+        values (?, ?, '[system]x', ?, 'mock', 'mock-1', ?, ?, NULL, ?, ?)
+        """,
+        (agent_name, action, output_text, status, session_id, created_at, reviewed_by),
+    )
+    conn.commit()
+
+
 def _make_report(conn, session_id):
     return ReportService(conn).build_report_payload(session_id)
 
@@ -97,6 +112,111 @@ class TestReportPayload:
         report = _make_report(conn, sid)
         assert "reifegrad" in report["methodology"]
         assert "zero_differenzierung" in report["methodology"]
+
+
+class TestAiReportSections:
+    def test_sections_absent_without_logs(self, conn):
+        svc = MaturityService(conn)
+        sid = svc.create_session_response()["data"]["session_id"]
+        _complete_rating(conn, sid, "5.12", 2.0)
+
+        report = _make_report(conn, sid)
+        assert report["isms_assessment"] is None
+        assert report["improvement_suggestions"] is None
+
+    def test_isms_section_from_log(self, conn):
+        svc = MaturityService(conn)
+        sid = svc.create_session_response()["data"]["session_id"]
+        _complete_rating(conn, sid, "5.12", 2.0)
+        _insert_ai_log(
+            conn, sid, "isms_assessment", "assess_isms",
+            "**Gesamteinschätzung:** Teilweise umgesetzt.",
+        )
+
+        report = _make_report(conn, sid)
+        section = report["isms_assessment"]
+        assert section["status"] == "proposed"
+        assert section["agent_name"] == "isms_assessment"
+        assert "Teilweise umgesetzt" in section["output_text"]
+        assert "candidates" not in section
+
+    def test_improvement_section_includes_candidates(self, conn):
+        svc = MaturityService(conn)
+        sid = svc.create_session_response()["data"]["session_id"]
+        _complete_rating(conn, sid, "8.3", 1.0)
+        _insert_ai_log(
+            conn, sid, "improvement_advisor", "suggest_improvements",
+            "**Priorisierte Verbesserungsvorschläge:** x",
+        )
+
+        report = _make_report(conn, sid)
+        section = report["improvement_suggestions"]
+        assert section["candidates"]
+        assert {"control_id", "priority_score", "reason"} <= set(section["candidates"][0])
+
+    def test_prefers_accepted_over_newer_proposed(self, conn):
+        svc = MaturityService(conn)
+        sid = svc.create_session_response()["data"]["session_id"]
+        _complete_rating(conn, sid, "5.12", 2.0)
+        _insert_ai_log(
+            conn, sid, "isms_assessment", "assess_isms", "freigegebene Version",
+            status="accepted", reviewed_by="auditor",
+        )
+        _insert_ai_log(
+            conn, sid, "isms_assessment", "assess_isms", "neuere offene Version",
+            status="proposed",
+        )
+
+        report = _make_report(conn, sid)
+        section = report["isms_assessment"]
+        assert section["status"] == "accepted"
+        assert "freigegebene Version" in section["output_text"]
+        assert section["reviewed_by"] == "auditor"
+
+    def test_markdown_includes_ai_sections(self, conn):
+        svc = MaturityService(conn)
+        sid = svc.create_session_response()["data"]["session_id"]
+        _complete_rating(conn, sid, "8.3", 1.0)
+        _insert_ai_log(
+            conn, sid, "isms_assessment", "assess_isms",
+            "**Gesamteinschätzung:** stabil.",
+        )
+        _insert_ai_log(
+            conn, sid, "improvement_advisor", "suggest_improvements",
+            "**Priorisierte Verbesserungsvorschläge:** Maßnahmen.",
+        )
+
+        md = render_markdown(_make_report(conn, sid))
+        assert "## 4. KI-Assessment des ISMS-Stands" in md
+        assert "## 5. KI-Verbesserungsvorschläge" in md
+        assert "**Priorisierte Kandidaten (deterministisch):**" in md
+        assert "## 6. Control-Details" in md
+        assert "## 7. AI-Analysen (Agent-Audit-Trail)" in md
+        assert "## 8. Berechnungsmethodik" in md
+
+    def test_markdown_without_ai_logs_notes_absence(self, conn):
+        svc = MaturityService(conn)
+        sid = svc.create_session_response()["data"]["session_id"]
+        _complete_rating(conn, sid, "5.12", 2.0)
+
+        md = render_markdown(_make_report(conn, sid))
+        assert "keine KI-Analyse erfasst" in md
+
+    def test_pdf_renders_with_ai_logs(self, conn):
+        svc = MaturityService(conn)
+        sid = svc.create_session_response()["data"]["session_id"]
+        _complete_rating(conn, sid, "8.3", 1.0)
+        _insert_ai_log(
+            conn, sid, "isms_assessment", "assess_isms",
+            "**Gesamteinschätzung:** Bewertung ↔ mit Sonderzeichen ✓.",
+        )
+        _insert_ai_log(
+            conn, sid, "improvement_advisor", "suggest_improvements",
+            "**Priorisierte Verbesserungsvorschläge:** Maßnahmen.",
+        )
+
+        pdf = render_pdf(_make_report(conn, sid))
+        assert pdf.startswith(b"%PDF")
 
 
 class TestRenderers:

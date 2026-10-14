@@ -419,6 +419,18 @@ class MaturityService:
                     "data": None
                 }
 
+            # Hardening: Nur explizit gespeicherte Antworten zählen als beantwortet.
+            # Der Maturity Evaluator im Frontend verwendet exakt dieselbe Regel
+            # (assessmentLevel !== null && saved). Ungespeicherte Entwürfe
+            # (saved === False) dürfen answer_count nicht aufblähen – sonst würde
+            # ein Control trotz offener Fragen als "vollständig" erscheinen.
+            # Antworten ohne gesetztes Flag gelten aus Kompatibilität als gespeichert.
+            answers = [
+                answer
+                for answer in answers
+                if not (isinstance(answer, dict) and answer.get("saved") is False)
+            ]
+
             control = self.conn.execute(
                 """
                 select control_id, domain, name

@@ -11,8 +11,11 @@ export interface ApiResponse<T> {
 export type AssessmentLevel = 0 | 1 | 2 | 3;
 
 export interface ControlAnswerPayload {
+  metric_id?: string;
   assessment_level: AssessmentLevel | null;
   notes?: string | null;
+  updated_at?: string;
+  saved?: boolean;
 }
 
 export interface ControlSubmitPayload {
@@ -216,6 +219,32 @@ export interface AgentReportLog {
   model: string | null;
 }
 
+export interface ImprovementCandidate {
+  control_id: string;
+  control_name: string | null;
+  domain: string | null;
+  mil_level: number | null;
+  mil_display: string | null;
+  status: string | null;
+  zero_reason: string | null;
+  kritikalitaet: string | null;
+  priority_score: number;
+  reason: string;
+}
+
+export interface AgentAiSection {
+  action: string;
+  agent_name: string;
+  status: 'proposed' | 'accepted' | 'rejected' | 'error';
+  output_text: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  provider: string | null;
+  model: string | null;
+  candidates?: ImprovementCandidate[];
+}
+
 export interface MaturityReportData {
   session_id: string;
   status: 'active' | 'completed';
@@ -225,6 +254,8 @@ export interface MaturityReportData {
   executive: MaturityExecutiveSummary;
   overall: MaturityOverallSummary;
   domains: MaturityDomainSummary[];
+  isms_assessment?: AgentAiSection | null;
+  improvement_suggestions?: AgentAiSection | null;
   agent_logs: AgentReportLog[];
   methodology: MaturityMethodology;
   generated_with: string;
