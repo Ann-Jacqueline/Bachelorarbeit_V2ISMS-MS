@@ -280,7 +280,10 @@ Die Migration `ensure_rating_schema` ergänzt fehlende Spalten idempotent; der I
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r backend\requirements.txt
-python backend\app.py
+cd backend
+set FLASK_APP=app.py
+set FLASK_DEBUG=1
+flask run
 ```
 
 ### Frontend
